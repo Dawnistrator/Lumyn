@@ -1,6 +1,6 @@
 <div align="center">
 
-# Lumyn
+# LUMYN
 
 **A local Hi-Res music player for Android — built for people who own their music.**
 
