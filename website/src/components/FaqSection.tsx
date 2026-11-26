@@ -11,18 +11,18 @@ export function FaqSection() {
   return (
     <section
       id="faq"
-      className="px-4 py-16 sm:px-6 md:py-24"
+      className="px-4 py-12 sm:px-6 md:py-20 lg:py-24"
       style={{ borderTop: "1px solid var(--hairline)" }}
     >
-      <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-12">
-        <div className="lg:col-span-4">
+      <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-12 lg:gap-10">
+        <div className="min-w-0 lg:col-span-4">
           <p className="body-5 text-[var(--accent)]">{copy.faq.sectionLabel}</p>
           <h2 className="heading-3 mt-2 text-[var(--text-primary)]">
             {copy.faq.heading}
           </h2>
         </div>
 
-        <div className="lg:col-span-8">
+        <div className="min-w-0 lg:col-span-8">
           <div className="divide-y" style={{ borderColor: "var(--hairline)" }}>
             {copy.faq.items.map((item, idx) => {
               const isOpen = openIndex === idx;
@@ -53,8 +53,8 @@ export function FaqSection() {
                   </button>
 
                   {isOpen && (
-                    <div id={panelId} className="pt-2 pb-2 pr-8">
-                      <p className="body-3 text-[var(--text-secondary)]">
+                    <div id={panelId} className="pt-2 pb-2 pr-1 sm:pr-8">
+                      <p className="body-3 break-words text-[var(--text-secondary)]">
                         {item.answer}
                       </p>
                     </div>

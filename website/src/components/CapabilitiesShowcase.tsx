@@ -14,7 +14,7 @@ export function CapabilitiesShowcase() {
   return (
     <section
       id="capabilities"
-      className="px-4 py-16 sm:px-6 md:py-24"
+      className="px-4 py-12 sm:px-6 md:py-20 lg:py-24"
       style={{ borderTop: "1px solid var(--hairline)" }}
     >
       <div className="mx-auto max-w-6xl">
@@ -28,12 +28,12 @@ export function CapabilitiesShowcase() {
           </p>
         </div>
 
-        <div className="mt-10 grid items-start gap-10 lg:grid-cols-12 lg:gap-12">
-          <div className="flex flex-col items-center lg:col-span-5">
+        <div className="mt-8 grid items-start gap-8 md:mt-10 md:grid-cols-12 md:gap-8 lg:gap-12">
+          <div className="flex min-w-0 flex-col items-center md:col-span-5">
             <div
               role="tablist"
               aria-label="App screen selector"
-              className="mb-6 flex w-full flex-wrap justify-center gap-2 lg:justify-start"
+              className="mb-5 grid w-full grid-cols-2 gap-2 sm:mb-6 sm:flex sm:flex-wrap sm:justify-center md:justify-start"
             >
               {screens.map((screen, idx) => {
                 const selected = idx === activeScreenIndex;
@@ -44,7 +44,7 @@ export function CapabilitiesShowcase() {
                     role="tab"
                     aria-selected={selected}
                     onClick={() => setActiveScreenIndex(idx)}
-                    className="button-sm min-h-11 rounded-xl px-3.5 py-2 transition-colors duration-200"
+                    className="button-sm min-h-11 rounded-xl px-3 py-2 text-center transition-colors duration-200"
                     style={{
                       backgroundColor: selected
                         ? "var(--accent-fill)"
@@ -62,7 +62,7 @@ export function CapabilitiesShowcase() {
             </div>
 
             <div
-              className="w-full max-w-[290px] rounded-3xl p-2"
+              className="w-full max-w-[240px] rounded-3xl p-2 sm:max-w-[260px] lg:max-w-[290px]"
               style={{
                 backgroundColor: "var(--surface)",
                 border: "1px solid var(--hairline-strong)",
@@ -75,13 +75,13 @@ export function CapabilitiesShowcase() {
                 width={activeScreen.width}
                 height={activeScreen.height}
                 loading="lazy"
-                className="block h-auto w-full rounded-2xl"
+                className="block aspect-[720/1507] h-auto w-full rounded-2xl"
               />
             </div>
           </div>
 
-          <div className="lg:col-span-7">
-            <div className="lumyn-card rounded-2xl p-6">
+          <div className="min-w-0 md:col-span-7">
+            <div className="lumyn-card rounded-2xl p-4 sm:p-6">
               <h3 className="heading-5 text-[var(--text-primary)]">
                 {activeScreen.title}
               </h3>

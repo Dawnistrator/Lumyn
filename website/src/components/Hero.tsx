@@ -17,21 +17,21 @@ export function Hero({ latestTag }: HeroProps) {
       : copy.hero.primaryCta.replace("v1.0.0", latestTag);
 
   return (
-    <section className="px-4 pt-12 pb-16 sm:px-6 md:pt-16 md:pb-24">
-      <div className="mx-auto grid max-w-6xl items-center gap-10 lg:grid-cols-12 lg:gap-12">
-        <div className="flex flex-col items-start lg:col-span-7">
+    <section className="px-4 pt-8 pb-12 sm:px-6 md:pt-14 md:pb-20 lg:pt-16 lg:pb-24">
+      <div className="mx-auto grid max-w-6xl items-center gap-8 md:grid-cols-12 md:gap-8 lg:gap-12">
+        <div className="flex min-w-0 flex-col items-start md:col-span-7">
           <h1 className="heading-1 max-w-[680px] whitespace-pre-line text-[var(--text-primary)]">
             {copy.hero.headline}
           </h1>
 
-          <p className="title-2 mt-6 max-w-[600px] text-[var(--text-secondary)]">
+          <p className="title-2 mt-5 max-w-[600px] text-[var(--text-secondary)] sm:mt-6">
             {copy.hero.subheadline}
           </p>
 
-          <div className="mt-8 flex flex-wrap items-center gap-4">
+          <div className="mt-6 flex w-full flex-col gap-3 sm:mt-8 sm:w-auto sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
             <a
               href="#download"
-              className="btn-primary button-md inline-flex min-h-12 items-center gap-2 rounded-xl px-5 py-3 no-underline"
+              className="btn-primary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center no-underline sm:w-auto"
             >
               <span>{primaryLabel}</span>
               <ArrowDown size={18} aria-hidden="true" />
@@ -41,7 +41,7 @@ export function Hero({ latestTag }: HeroProps) {
               href={GITHUB_REPO_URL}
               target="_blank"
               rel="noopener noreferrer"
-              className="btn-secondary button-md inline-flex min-h-12 items-center gap-2 rounded-xl px-5 py-3 no-underline"
+              className="btn-secondary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center no-underline sm:w-auto"
             >
               <span>{copy.hero.secondaryCta}</span>
               <ArrowUpRight size={18} aria-hidden="true" />
@@ -53,9 +53,9 @@ export function Hero({ latestTag }: HeroProps) {
           </p>
         </div>
 
-        <div className="flex justify-center lg:col-span-5 lg:justify-end">
+        <div className="flex min-w-0 justify-center md:col-span-5 md:justify-end">
           <div
-            className="w-full max-w-[290px] rounded-3xl p-2 sm:max-w-[310px]"
+            className="w-full max-w-[240px] rounded-3xl p-2 sm:max-w-[264px] md:max-w-[272px] lg:max-w-[310px]"
             style={{
               backgroundColor: "var(--surface)",
               border: "1px solid var(--hairline-strong)",
@@ -70,7 +70,7 @@ export function Hero({ latestTag }: HeroProps) {
               fetchPriority="high"
               loading="eager"
               decoding="sync"
-              className="block h-auto w-full rounded-2xl"
+              className="block aspect-[720/1507] h-auto w-full rounded-2xl"
             />
           </div>
         </div>

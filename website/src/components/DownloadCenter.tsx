@@ -78,12 +78,12 @@ export function DownloadCenter({
   return (
     <section
       id="download"
-      className="px-4 py-16 sm:px-6 md:py-24"
+      className="px-4 py-12 sm:px-6 md:py-20 lg:py-24"
       style={{ borderTop: "1px solid var(--hairline)" }}
     >
       <div className="mx-auto max-w-6xl">
         <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-          <div className="max-w-[680px]">
+          <div className="min-w-0 max-w-[680px]">
             <p className="body-5 text-[var(--accent)]">{copy.download.sectionLabel}</p>
             <h2 className="heading-3 mt-2 text-[var(--text-primary)]">
               {copy.download.heading}
@@ -127,7 +127,7 @@ export function DownloadCenter({
           </div>
         )}
 
-        <div className="lumyn-card mt-8 rounded-2xl p-5 sm:p-6">
+        <div className="lumyn-card mt-8 rounded-2xl p-4 sm:p-6">
           <p className="body-5 text-[var(--text-muted)]">{copy.download.archLabel}</p>
 
           {isLoading ? (
@@ -135,7 +135,7 @@ export function DownloadCenter({
               <p className="body-5 text-[var(--text-secondary)]">
                 {copy.download.loadingState}
               </p>
-              <div className="grid gap-3 sm:grid-cols-5">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
                 {["arm64", "univ", "arm32", "x64", "x86"].map((slot) => (
                   <div
                     key={slot}
@@ -155,7 +155,7 @@ export function DownloadCenter({
               <div
                 role="tablist"
                 aria-label={copy.download.archLabel}
-                className="mt-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-5"
+                className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
               >
                 {release.assets.map((asset) => {
                   const selected = selectedAsset?.abi === asset.abi;
@@ -169,7 +169,7 @@ export function DownloadCenter({
                         setSelectedAbi(asset.abi);
                         setCopiedSha(false);
                       }}
-                      className="flex min-h-12 flex-col items-start justify-center rounded-xl px-3.5 py-2.5 text-left transition-colors duration-200"
+                      className="flex min-h-12 min-w-0 flex-col items-start justify-center rounded-xl px-3.5 py-2.5 text-left transition-colors duration-200"
                       style={{
                         backgroundColor: selected
                           ? "var(--accent-fill)"
@@ -216,7 +216,7 @@ export function DownloadCenter({
               {selectedAsset && (
                 <div className="mt-6 grid gap-6 pt-6 lg:grid-cols-12 lg:items-center" style={{ borderTop: "1px solid var(--hairline)" }}>
                   <div className="min-w-0 lg:col-span-8">
-                    <div className="grid gap-4 sm:grid-cols-[auto_auto_minmax(0,1fr)] sm:gap-x-8">
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-[auto_auto_minmax(0,1fr)] sm:gap-x-8">
                       <div>
                         <div className="caption-4 text-[var(--text-muted)]">
                           {copy.download.versionLabel}
@@ -233,7 +233,7 @@ export function DownloadCenter({
                           {selectedAsset.sizeFormatted}
                         </div>
                       </div>
-                      <div className="min-w-0">
+                      <div className="col-span-2 min-w-0 sm:col-span-1">
                         <div className="caption-4 text-[var(--text-muted)]">
                           {copy.download.fileNameLabel}
                         </div>
@@ -253,14 +253,21 @@ export function DownloadCenter({
                           {copy.download.shaLabel}
                         </div>
                         <div className="lumyn-raised mt-1.5 flex flex-col gap-2 rounded-xl p-2.5 sm:flex-row sm:items-center sm:justify-between">
-                          <code className="caption-4 mono-tabular min-w-0 overflow-x-auto whitespace-nowrap px-1.5 text-[var(--text-secondary)]">
-                            {selectedAsset.sha256}
-                          </code>
+                          <div
+                            tabIndex={0}
+                            role="region"
+                            aria-label={copy.download.shaLabel}
+                            className="min-w-0 flex-1 overflow-x-auto rounded-lg px-1.5 py-1"
+                          >
+                            <code className="caption-4 mono-tabular whitespace-nowrap [overflow-wrap:normal] text-[var(--text-secondary)]">
+                              {selectedAsset.sha256}
+                            </code>
+                          </div>
                           <button
                             type="button"
                             onClick={handleCopySha}
                             aria-live="polite"
-                            className="btn-secondary caption-4 inline-flex min-h-10 shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5"
+                            className="btn-secondary caption-4 inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 sm:w-auto"
                           >
                             {copiedSha ? (
                               <Check
@@ -280,12 +287,12 @@ export function DownloadCenter({
                     )}
                   </div>
 
-                  <div className="flex flex-col gap-3 lg:col-span-4 lg:items-end">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:col-span-4 lg:flex-col lg:items-end">
                     <a
                       href={selectedAsset.downloadUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-primary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 no-underline lg:w-auto"
+                      className="btn-primary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center no-underline sm:w-auto"
                     >
                       <DownloadSimple size={18} aria-hidden="true" />
                       <span>
@@ -297,7 +304,7 @@ export function DownloadCenter({
                       href={release.htmlUrl || GITHUB_RELEASES_URL}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="btn-secondary button-sm inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 no-underline lg:w-auto"
+                      className="btn-secondary button-sm inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-center no-underline sm:w-auto"
                     >
                       <span>{copy.download.viewAllReleases}</span>
                       <ArrowUpRight size={16} aria-hidden="true" />

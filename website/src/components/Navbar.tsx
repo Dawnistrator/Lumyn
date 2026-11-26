@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { List, Moon, Sun, X } from "@phosphor-icons/react";
 import { LumynMark } from "@/components/LumynMark";
@@ -10,9 +10,15 @@ interface NavbarProps {
   isSubPage?: boolean;
 }
 
+function supportsNativePopover(): boolean {
+  return typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
+}
+
 export function Navbar({ isSubPage = false }: NavbarProps) {
   const { theme, toggleTheme, locale, setLocale, copy } = useAppPreferences();
   const [menuOpen, setMenuOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   const navItems = isSubPage
     ? [{ href: "/", label: copy.privacyPage.backHome }]
@@ -24,23 +30,79 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
         { href: "#faq", label: copy.nav.faq },
       ];
 
+  const closeMenu = useCallback(() => {
+    const panel = panelRef.current;
+    if (panel && supportsNativePopover() && panel.matches(":popover-open")) {
+      panel.hidePopover();
+    }
+    setMenuOpen(false);
+  }, []);
+
   useEffect(() => {
-    if (!menuOpen) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        setMenuOpen(false);
+    const panel = panelRef.current;
+    if (!panel) return;
+
+    const handleToggle = (event: Event) => {
+      const toggleEvent = event as ToggleEvent;
+      setMenuOpen(toggleEvent.newState === "open");
+    };
+
+    panel.addEventListener("toggle", handleToggle);
+
+    const desktopQuery = window.matchMedia("(min-width: 1024px)");
+    const handleViewportChange = (event: MediaQueryListEvent) => {
+      if (event.matches) {
+        closeMenu();
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    desktopQuery.addEventListener("change", handleViewportChange);
+
+    return () => {
+      panel.removeEventListener("toggle", handleToggle);
+      desktopQuery.removeEventListener("change", handleViewportChange);
+    };
+  }, [closeMenu]);
+
+  useEffect(() => {
+    if (!menuOpen || supportsNativePopover()) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
+        return;
+      }
+      setMenuOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("pointerdown", handlePointerDown);
+    };
   }, [menuOpen]);
 
+  const handleMenuButtonClick = () => {
+    if (supportsNativePopover()) {
+      return;
+    }
+    setMenuOpen((prev) => !prev);
+  };
+
   return (
-    <header className="sticky top-0 z-40 px-4 pt-3 sm:px-6 sm:pt-4">
+    <header className="site-header sticky top-0 z-40">
       <div className="mx-auto max-w-6xl">
         <nav
           aria-label="Primary"
-          className="flex min-h-14 items-center justify-between gap-3 rounded-2xl px-3 py-2 backdrop-blur-md"
+          className="flex min-h-13 flex-wrap items-center justify-between gap-2 rounded-2xl px-2.5 py-1.5 backdrop-blur-md sm:min-h-14 sm:gap-3 sm:px-3 sm:py-2"
           style={{
             backgroundColor: "var(--surface-nav)",
             border: "1px solid var(--hairline)",
@@ -48,31 +110,31 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
         >
           <Link
             href="/"
-            className="flex min-h-11 items-center gap-2.5 rounded-xl px-2 text-inherit no-underline"
+            className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-1.5 text-inherit no-underline sm:gap-2.5 sm:px-2"
           >
             <LumynMark className="h-7 w-7 shrink-0" />
-            <span className="title-3 font-semibold tracking-tight text-[var(--text-primary)]">
+            <span className="title-3 whitespace-nowrap font-semibold tracking-tight text-[var(--text-primary)]">
               Lumyn
             </span>
           </Link>
 
-          <div className="hidden items-center gap-1 lg:flex">
+          <div className="hidden flex-wrap items-center gap-0.5 lg:flex xl:gap-1">
             {navItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
-                className="body-5 rounded-xl px-3 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)]"
+                className="body-5 inline-flex min-h-11 items-center whitespace-nowrap rounded-xl px-2.5 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] xl:px-3"
               >
                 {item.label}
               </Link>
             ))}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
             <div
               role="group"
               aria-label={copy.nav.languageLabel}
-              className="flex items-center rounded-xl p-1"
+              className="hidden items-center gap-1 rounded-xl p-1 sm:flex"
               style={{
                 backgroundColor: "var(--surface-raised)",
                 border: "1px solid var(--hairline)",
@@ -86,7 +148,7 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
                     type="button"
                     onClick={() => setLocale(lang)}
                     aria-pressed={active}
-                    className="caption-4 min-h-9 min-w-9 rounded-lg px-2.5 uppercase transition-colors duration-200"
+                    className="caption-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2.5 uppercase transition-colors duration-200"
                     style={{
                       backgroundColor: active ? "var(--surface)" : "transparent",
                       color: active ? "var(--text-primary)" : "var(--text-muted)",
@@ -102,7 +164,7 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
               type="button"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? copy.nav.themeToLight : copy.nav.themeToDark}
-              className="btn-secondary flex h-11 w-11 items-center justify-center rounded-xl"
+              className="btn-secondary flex h-11 w-11 shrink-0 items-center justify-center rounded-xl"
             >
               {theme === "dark" ? (
                 <Sun size={18} aria-hidden="true" />
@@ -114,18 +176,21 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
             {!isSubPage && (
               <a
                 href="#download"
-                className="btn-primary button-sm hidden min-h-11 items-center rounded-xl px-4 py-2 no-underline sm:inline-flex"
+                className="btn-primary button-sm hidden min-h-11 shrink-0 items-center whitespace-nowrap rounded-xl px-4 py-2 no-underline md:inline-flex"
               >
                 {copy.nav.downloadCta}
               </a>
             )}
 
             <button
+              ref={triggerRef}
               type="button"
-              onClick={() => setMenuOpen((prev) => !prev)}
+              onClick={handleMenuButtonClick}
+              popoverTarget="mobile-nav-panel"
+              popoverTargetAction="toggle"
               aria-expanded={menuOpen}
               aria-controls="mobile-nav-panel"
-              className="btn-secondary button-sm flex min-h-11 items-center gap-1.5 rounded-xl px-3 lg:hidden"
+              className="nav-menu-trigger btn-secondary button-sm flex min-h-11 shrink-0 items-center gap-1.5 rounded-xl px-3 lg:hidden"
             >
               {menuOpen ? (
                 <X size={18} aria-hidden="true" />
@@ -134,41 +199,80 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
               )}
               <span>{menuOpen ? copy.nav.menuClose : copy.nav.menuOpen}</span>
             </button>
-          </div>
-        </nav>
 
-        {menuOpen && (
-          <div
-            id="mobile-nav-panel"
-            className="mt-2 rounded-2xl p-4 backdrop-blur-lg lg:hidden"
-            style={{
-              backgroundColor: "var(--surface-menu)",
-              border: "1px solid var(--hairline-strong)",
-            }}
-          >
-            <div className="flex flex-col gap-2">
-              {navItems.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  onClick={() => setMenuOpen(false)}
-                  className="title-3 flex min-h-11 items-center rounded-xl px-3 py-2 text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)]"
+            <div
+              ref={panelRef}
+              id="mobile-nav-panel"
+              popover="auto"
+              data-fallback-open={menuOpen ? "true" : "false"}
+              className="nav-menu-panel rounded-2xl p-3.5 backdrop-blur-lg sm:p-4 lg:hidden"
+              style={{
+                backgroundColor: "var(--surface-menu)",
+                border: "1px solid var(--hairline-strong)",
+              }}
+            >
+              <div className="flex flex-col gap-1.5">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={closeMenu}
+                    className="title-3 flex min-h-11 items-center rounded-xl px-3 py-2 text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)]"
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+
+                <div
+                  className="mt-2 flex items-center justify-between gap-3 pt-3 sm:hidden"
+                  style={{ borderTop: "1px solid var(--hairline)" }}
                 >
-                  {item.label}
-                </Link>
-              ))}
-              {!isSubPage && (
-                <a
-                  href="#download"
-                  onClick={() => setMenuOpen(false)}
-                  className="btn-primary button-md mt-2 flex min-h-12 items-center justify-center rounded-xl px-4 py-3 no-underline"
-                >
-                  {copy.hero.primaryCta}
-                </a>
-              )}
+                  <span className="body-5 text-[var(--text-secondary)]">
+                    {copy.nav.languageLabel}
+                  </span>
+                  <div
+                    role="group"
+                    aria-label={copy.nav.languageLabel}
+                    className="flex items-center gap-1.5 rounded-xl p-1"
+                    style={{
+                      backgroundColor: "var(--surface-raised)",
+                      border: "1px solid var(--hairline)",
+                    }}
+                  >
+                    {(["en", "id"] as const).map((lang) => {
+                      const active = locale === lang;
+                      return (
+                        <button
+                          key={lang}
+                          type="button"
+                          onClick={() => setLocale(lang)}
+                          aria-pressed={active}
+                          className="caption-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2.5 uppercase transition-colors duration-200"
+                          style={{
+                            backgroundColor: active ? "var(--surface)" : "transparent",
+                            color: active ? "var(--text-primary)" : "var(--text-muted)",
+                          }}
+                        >
+                          {lang}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {!isSubPage && (
+                  <a
+                    href="#download"
+                    onClick={closeMenu}
+                    className="btn-primary button-md mt-2 flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-3 text-center no-underline md:hidden"
+                  >
+                    {copy.hero.primaryCta}
+                  </a>
+                )}
+              </div>
             </div>
           </div>
-        )}
+        </nav>
       </div>
     </header>
   );

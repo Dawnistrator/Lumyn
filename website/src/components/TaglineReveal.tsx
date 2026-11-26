@@ -74,7 +74,7 @@ export function TaglineReveal() {
 
   return (
     <section
-      className="px-4 py-20 sm:px-6 md:py-28"
+      className="px-4 py-14 sm:px-6 md:py-24 lg:py-28"
       style={{ borderTop: "1px solid var(--hairline)" }}
     >
       <div ref={containerRef} className="mx-auto max-w-6xl">
@@ -90,14 +90,13 @@ export function TaglineReveal() {
                   return (
                     <span
                       key={`${lineIdx}-${index}`}
-                      className="inline-block transition-opacity duration-500"
+                      className="mr-[0.25em] inline-block transition-opacity duration-500 last:mr-0"
                       style={{
                         opacity: revealed ? 1 : 0.28,
                         transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
                       }}
                     >
                       {word}
-                      {"\u00A0"}
                     </span>
                   );
                 })}

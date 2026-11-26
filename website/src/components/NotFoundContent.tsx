@@ -11,13 +11,13 @@ export function NotFoundContent() {
   const { copy } = useAppPreferences();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <Navbar isSubPage />
       <main
         id="main-content"
-        className="flex flex-1 items-center px-4 py-16 sm:px-6"
+        className="flex flex-1 items-center px-4 py-12 sm:px-6 md:py-16"
       >
-        <div className="mx-auto max-w-xl">
+        <div className="mx-auto w-full max-w-xl">
           <p className="caption-2 mono-tabular text-[var(--accent)]">
             {copy.notFound.code}
           </p>
@@ -30,7 +30,7 @@ export function NotFoundContent() {
           <div className="mt-8">
             <Link
               href="/"
-              className="btn-primary button-md inline-flex min-h-12 items-center gap-2 rounded-xl px-5 py-3 no-underline"
+              className="btn-primary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center no-underline sm:w-auto"
             >
               <ArrowLeft size={18} aria-hidden="true" />
               <span>{copy.notFound.backHome}</span>

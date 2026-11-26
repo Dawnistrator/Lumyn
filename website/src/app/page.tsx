@@ -43,7 +43,7 @@ export default async function HomePage() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <Navbar />
       <main id="main-content" className="flex-1">
         <Hero latestTag={release.tagName} />

@@ -11,9 +11,9 @@ export function PrivacyContent() {
   const { copy } = useAppPreferences();
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="flex min-h-dvh flex-col">
       <Navbar isSubPage />
-      <main id="main-content" className="flex-1 px-4 py-12 sm:px-6 md:py-16">
+      <main id="main-content" className="flex-1 px-4 py-10 sm:px-6 md:py-16">
         <div className="mx-auto max-w-3xl">
           <Link
             href="/"
@@ -33,13 +33,13 @@ export function PrivacyContent() {
             {copy.privacyPage.updated}
           </p>
 
-          <div className="mt-10 space-y-6">
+          <div className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
             {copy.privacyPage.sections.map((section) => (
-              <article key={section.heading} className="lumyn-card rounded-2xl p-6">
+              <article key={section.heading} className="lumyn-card min-w-0 rounded-2xl p-4 sm:p-6">
                 <h2 className="title-2 text-[var(--text-primary)]">
                   {section.heading}
                 </h2>
-                <p className="body-3 mt-3 text-[var(--text-secondary)]">
+                <p className="body-3 mt-3 break-words text-[var(--text-secondary)]">
                   {section.body}
                 </p>
               </article>
