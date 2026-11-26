@@ -1,0 +1,114 @@
+name: Release APK
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    name: Build & Publish Signed Release APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure Android SDK 37 & Build Tools 37.0.0
+        run: |
+          yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses || true
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0"
+
+      - name: Run unit tests
+        run: ./gradlew testDebugUnitTest :core:model:test
+
+      - name: Build signed release APKs
+        env:
+          LUMYN_KEYSTORE_BASE64: ${{ secrets.LUMYN_KEYSTORE_BASE64 }}
+          LUMYN_KEYSTORE_PATH: ${{ runner.temp }}/lumyn-release.jks
+          LUMYN_KEYSTORE_PASSWORD: ${{ secrets.LUMYN_KEYSTORE_PASSWORD }}
+          LUMYN_KEY_ALIAS: ${{ secrets.LUMYN_KEY_ALIAS }}
+          LUMYN_KEY_PASSWORD: ${{ secrets.LUMYN_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [ -z "${LUMYN_KEYSTORE_BASE64}" ] || [ -z "${LUMYN_KEYSTORE_PASSWORD}" ] || [ -z "${LUMYN_KEY_ALIAS}" ] || [ -z "${LUMYN_KEY_PASSWORD}" ]; then
+            echo "::error::Missing signing secrets. Set LUMYN_KEYSTORE_BASE64, LUMYN_KEYSTORE_PASSWORD, LUMYN_KEY_ALIAS, and LUMYN_KEY_PASSWORD in GitHub Repository Secrets."
+            exit 1
+          fi
+          printf '%s' "${LUMYN_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LUMYN_KEYSTORE_PATH}"
+          ./gradlew :app:assembleRelease
+
+      - name: Verify APK signatures & privacy, and stage release assets
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          RELEASE_TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          APKSIGNER="${ANDROID_HOME}/build-tools/37.0.0/apksigner"
+          AAPT2="${ANDROID_HOME}/build-tools/37.0.0/aapt2"
+
+          mkdir -p release-assets
+          shopt -s nullglob
+          apks=(app/build/outputs/apk/release/*.apk)
+          if [ ${#apks[@]} -eq 0 ]; then
+            echo "::error::No release APKs found under app/build/outputs/apk/release/"
+            exit 1
+          fi
+
+          for apk in "${apks[@]}"; do
+            base="$(basename "${apk}")"
+            echo "Verifying ${base}..."
+            "${APKSIGNER}" verify "${apk}"
+
+            perms="$("${AAPT2}" dump permissions "${apk}")"
+            echo "${perms}"
+            if echo "${perms}" | grep -Eq 'android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)'; then
+              echo "::error::Network permission detected in ${base}!"
+              exit 1
+            fi
+
+            abi="${base#app-}"
+            abi="${abi%-release.apk}"
+            if [ "${abi}" = "app-release.apk" ]; then
+              abi="release"
+            fi
+            cp "${apk}" "release-assets/Lumyn-${RELEASE_TAG}-${abi}.apk"
+          done
+
+          (cd release-assets && sha256sum *.apk > SHA256SUMS.txt)
+          ls -lh release-assets
+
+      - name: Clean up decoded keystore
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/lumyn-release.jks"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: Lumyn ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
+          files: release-assets/*
