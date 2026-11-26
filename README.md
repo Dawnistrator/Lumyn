@@ -1,72 +1,135 @@
+<div align="center">
+
 # Lumyn
 
-**100% Offline Local Hi-Res Music Player for Android** — built with Kotlin, Jetpack Compose, Material Design 3, and Jetpack Media3. Lumyn declares **zero `INTERNET` or `ACCESS_NETWORK_STATE` permissions**: your audio files, listening history, playlists, and tags never leave your device.
+**A local Hi-Res music player for Android — built for people who own their music.**
 
-## Highlights
+[![Android](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%E2%80%9336)-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Material 3 Expressive](https://img.shields.io/badge/Material%203-Expressive%201.5.0-6750A4?style=flat-square)](https://m3.material.io)
+[![Media3](https://img.shields.io/badge/Jetpack%20Media3-1.11.1-4285F4?style=flat-square)](https://developer.android.com/media/media3)
+[![Network](https://img.shields.io/badge/Internet%20Permission-None%20(100%25%20Local)-111111?style=flat-square)](#privacy-by-architecture)
 
-- **3-Tier Hi-Res Audio Pipeline (`core:audio-engine`)**
-  - **DSP 32-bit Float Mode:** Real-time RBJ biquad 10-band graphic EQ + parametric AutoEQ (`.txt`) import, ReplayGain (`REPLAYGAIN_*` & `R128_*`) with peak clipping protection, L/R channel balance, mono downmix, soft limiter, and smooth equal-power crossfade.
-  - **Direct PCM (Android 13+):** System mixer bypass when supported by the audio route.
-  - **Bit-Perfect USB DAC (Android 14+):** Native sample rate and bit depth handoff over USB-C DACs with automatic pause on disconnect.
-  - **Honest Signal Path Sheet:** Live telemetry of Source → Decoder (`MediaCodec` / NextLib FFmpeg) → Processing → Output Device.
-- **Offline Library & Audiophile Metadata (`core:media-scanner`, `core:database`)**
-  - Room + MediaStore local indexing with configurable folder whitelist/blacklist filters.
-  - **In-File Tag Editor:** Streaming pure-Kotlin writer for FLAC (Vorbis Comment + front cover `PICTURE`), MP3 (ID3v2.3/v2.4 + `APIC`), and MP4/M4A (`ilst` + `stco`/`co64` offset shifting) with Android 11+ `MediaStore.createWriteRequest` consent.
-  - **Virtual CUE Sheet Splitting:** Uses Media3 `ClippingConfiguration` to play single-file album rips (`.flac` + `.cue`) as clipped tracks.
-  - **Playlists & Local Lyrics:** M3U8 import/export, synced `.lrc` & embedded lyrics viewer, drag-to-reorder playback queue, and persisted queue resumption across app restarts.
-  - **Smart Playlists & Listening Stats:** 100% offline **Recently Played**, **Most Played**, **Forgotten Gems**, **Hi-Res Collection**, **Favorites**, and local listening analytics.
-- **Adaptive UI & Ecosystem (`app`, `feature:*`, `core:designsystem`)**
-  - Material Design 3 (`1.4.0` stable via Compose BOM `2026.06.01`), `material3.adaptive` layouts (phone compact, foldable/tablet rail, expanded supporting pane), dynamic album-art theming, and bundled offline **JetBrains Mono** typography.
-  - Jetpack Glance Home Screen widget and Android Auto (`MediaLibraryService`) browse tree + playback resumption.
+No accounts, no cloud sync, and zero network permissions. Just your FLAC, WAV, ALAC, and MP3 files, a transparent 32-bit float audio engine, and a tactile Material 3 Expressive interface that stays out of the way.
+
+</div>
+
+---
+
+## Screenshots
+
+<div align="center">
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/home.png" width="190" alt="Lumyn Home and Floating Mini-Player" /><br />
+      <sub><b>Home &amp; Floating Mini-Player</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/now-playing.png" width="190" alt="Lumyn Now Playing Screen" /><br />
+      <sub><b>Now Playing &amp; Custom Seekbar</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/library.png" width="190" alt="Lumyn Library Artists" /><br />
+      <sub><b>Library &amp; Expressive Avatars</b></sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/equalizer.png" width="190" alt="Lumyn 10-Band Equalizer and DSP" /><br />
+      <sub><b>Equalizer &amp; 32-bit DSP</b></sub>
+    </td>
+  </tr>
+</table>
+</div>
+
+---
+
+## What Makes Lumyn Different
+
+### 1. Honest Hi-Res Audio Pipeline
+Instead of slapping "Hi-Res" badges on mystery audio routing, Lumyn exposes the exact chain from file to output inside an interactive **Audio Signal Path** sheet:
+
+```mermaid
+flowchart LR
+    File["Local Audio — FLAC · WAV · ALAC · MP3"] --> Dec["Decoder — MediaCodec / NextLib FFmpeg"]
+    Dec -->|DSP 32-bit Float| DSP["32-bit Float Pipeline — 10-Band EQ · AutoEQ · ReplayGain · Crossfade"]
+    Dec -->|Purist Mode Android 13+| Direct["Direct PCM / USB DAC — Bit-Perfect Native Rate"]
+    DSP --> Out["Speaker · Wired · Bluetooth · USB DAC"]
+    Direct --> Out
+```
+
+- **DSP 32-bit Float Mode:** Real-time RBJ biquad 10-band graphic EQ with AutoEQ parametric `.txt` import, ReplayGain (`REPLAYGAIN_*` & `R128_*`) peak protection, L/R channel balance, mono downmix, soft limiter, and equal-power crossfade.
+- **Direct PCM (Android 13+) & Bit-Perfect USB DAC (Android 14+):** Bypasses the system mixer and hands native sample rate and bit depth directly to your USB-C DAC—plus automatic pause if you unplug it.
+- **Format Coverage:** Platform codecs plus bundled **NextLib FFmpeg (`1.11.1-0.19.0`)** so FLAC works smoothly down to Android 8.0 Oreo alongside ALAC, APE, WavPack, and WMA.
+
+### 2. Material 3 Expressive Craft
+- Built on **Material 3 `1.5.0` (`Compose BOM 2026.11.01`)** with `MaterialExpressiveTheme`, spring-driven `MotionScheme.expressive()`, and bundled offline **JetBrains Mono** typography across regular and emphasized scales.
+- **Adaptive Artwork Now Playing:** Dynamic color extraction samples the active album cover for both the full player and the floating pill mini-player. Includes a custom wavy `Canvas` audio seekbar while playing, smooth marquee titles, and morphing play/pause controls.
+- **Tactile Visual Accents:** `MaterialShapes` (`SoftBurst`, `Cookie7Sided`, `Cookie9Sided`), wavy progress indicators during scans and listening breakdowns, connected `ToggleButton` groups, and responsive layouts across phones, foldables, and tablets.
+
+### 3. Built for Real Local Libraries
+- **In-File Tag & Cover Editor:** Streaming pure-Kotlin metadata writer for **FLAC** (`Vorbis Comment` + `PICTURE`), **MP3** (`ID3v2.3/v2.4` + `APIC`), and **MP4/M4A** (`ilst` + `stco`/`co64` offset shifting) with Android 11+ `MediaStore.createWriteRequest` consent.
+- **Virtual `.cue` Splitting:** Play single-file album rips cleanly as individual clipped tracks via Media3 `ClippingConfiguration`.
+- **Smart & Classic Playlists:** M3U8 import/export, synced `.lrc` & embedded lyrics with tap-to-seek, drag-to-reorder persistent queue, folder whitelist/blacklist filters, and local Smart Playlists (**Recently Played**, **Most Played**, **Forgotten Gems**, **Hi-Res Collection**, **Favorites**).
+- **Everyday Extras:** On-device Listening Stats, Glance home screen widget, and Android Auto (`MediaLibraryService`) browse tree + playback resumption.
+
+### Privacy by Architecture
+Lumyn declares **zero `INTERNET` or `ACCESS_NETWORK_STATE` permissions** in both debug and release manifests. You can verify this directly on any compiled APK:
+
+```bash
+aapt2 dump permissions app/build/outputs/apk/release/app-release.apk
+```
+
+---
 
 ## Module Architecture
 
-| Module | Responsibility |
+| Module | What it owns |
 |---|---|
 | `:app` | Adaptive shell (`LumynApp`), Navigation, Glance widget, Android Auto entry |
-| `:core:model` | Pure Kotlin domain models, ReplayGain math, AutoEQ/LRC/M3U/CUE parsers, Smart Playlist engine |
-| `:core:designsystem` | Bundled JetBrains Mono typography, Material 3 color system, shared components & icons |
-| `:core:database` | Room database (`v3` with `MIGRATION_2_3`), DAOs, DataStore preferences & queue persistence |
+| `:core:model` | Pure Kotlin domain models, ReplayGain math, AutoEQ/LRC/M3U/CUE parsers, Smart Playlist rules |
+| `:core:designsystem` | Bundled JetBrains Mono typography, `MaterialExpressiveTheme`, color extraction, shared components & icons |
+| `:core:database` | Room database (`v3` with `MIGRATION_2_3`), DAOs, DataStore preferences & persisted playback queue |
 | `:core:media-scanner` | MediaStore scanner/observer, binary header & ReplayGain parser, in-file tag writer, lyrics loader |
-| `:core:audio-engine` | `LumynPlaybackService`, `LumynDspAudioProcessor`, RBJ biquad DSP, crossfade, USB bit-perfect routing |
-| `:feature:home` | Home dashboard, Album Spotlight, Smart Playlists strip, offline Listening Stats |
+| `:core:audio-engine` | `LumynPlaybackService`, `LumynDspAudioProcessor`, RBJ biquad DSP, crossfade, USB DAC routing |
+| `:feature:home` | Home hero card, Smart Playlists strip, Album Spotlight carousel, local Listening Stats |
 | `:feature:library` | Songs, Albums, Artists, Folders, Playlists tabs + `LibraryDetailScreen` |
-| `:feature:player` | Now Playing screen & supporting pane, Queue sheet, Signal Path, Lyrics, Tag Editor |
-| `:feature:search` | Local instant search across tracks, albums, and artists |
-| `:feature:equalizer` | 10-band EQ, presets, AutoEQ `.txt` import, ReplayGain, L/R balance, mono, crossfade |
-| `:feature:settings` | Theme mode, dynamic color, folder filters, audio output mode, device capability diagnostics |
+| `:feature:player` | Now Playing screen & supporting pane, floating mini-player, Queue, Signal Path, Lyrics & Tag Editor sheets |
+| `:feature:search` | Instant offline search across tracks, albums, and artists |
+| `:feature:equalizer` | 10-band EQ, built-in presets, AutoEQ `.txt` import, ReplayGain, L/R balance, mono, crossfade |
+| `:feature:settings` | Theme mode, dynamic wallpaper color, folder filter manager, audio output mode & diagnostics |
 
-## Tech Stack & Requirements
+---
 
-- **Android SDK:** `minSdk = 26` (Android 8.0 Oreo), `compileSdk = 36`, `targetSdk = 36`
-- **Build Tools:** AGP `9.0.1`, Gradle `9.1.0`, Kotlin `2.4.21`, JDK 17+
-- **Core Libraries:** Jetpack Compose (`BOM 2026.06.01`, Material 3 `1.4.0`), Jetpack Media3 `1.11.1`, NextLib FFmpeg extension `1.11.1-0.19.0`, Room `2.8.5`, DataStore `1.3.0`, Hilt `2.60.1`, Glance `1.2.0`, Coil `3.4.0`
+## Tech Stack
+
+- **SDK & Build:** `minSdk = 26` (Android 8.0 Oreo), `compileSdk = 37`, `targetSdk = 36` · AGP `9.1.1` · Gradle `9.3.1` · Kotlin `2.4.21` · JDK 17+
+- **UI:** Jetpack Compose (`BOM 2026.11.01`, Material 3 `1.5.0`, Adaptive `1.3.0`), Coil `3.4.0`, Glance `1.2.0`
+- **Audio & Storage:** Jetpack Media3 `1.11.1`, NextLib FFmpeg extension `1.11.1-0.19.0`, Room `2.8.5`, DataStore `1.3.0`, Hilt `2.60.1`
+
+---
 
 ## Building & Testing
 
-### Debug Build & Unit Tests
+### Debug APK & Unit Tests
 ```bash
 ./gradlew assembleDebug testDebugUnitTest :core:model:test
 ```
 
 ### Release Signing Setup
-Copy `keystore.properties.example` to `keystore.properties` (gitignored) and populate your keystore credentials:
+Copy `keystore.properties.example` to `keystore.properties` (gitignored) and fill in your signing credentials:
 ```properties
 storeFile=keystore/lumyn-release.jks
 storePassword=YOUR_STORE_PASSWORD
 keyAlias=lumyn
 keyPassword=YOUR_KEY_PASSWORD
 ```
-For CI environments without a checked-in `keystore.properties`, provide `LUMYN_KEYSTORE_PATH`, `LUMYN_KEYSTORE_PASSWORD`, `LUMYN_KEY_ALIAS`, and `LUMYN_KEY_PASSWORD` as environment variables.
+For CI builds without a local `keystore.properties`, set `LUMYN_KEYSTORE_PATH`, `LUMYN_KEYSTORE_PASSWORD`, `LUMYN_KEY_ALIAS`, and `LUMYN_KEY_PASSWORD` as environment variables.
 
-### Release APKs (Per-ABI Splits + Universal)
+### Release APKs & Play Store Bundle
 ```bash
+# Signed per-ABI split APKs + universal APK under app/build/outputs/apk/release/
 ./gradlew assembleRelease
-```
-Outputs signed APKs for `arm64-v8a`, `armeabi-v7a`, `x86_64`, `x86`, and `universal` under `app/build/outputs/apk/release/`.
 
-### Play Store App Bundle (`.aab`)
-```bash
+# Signed Play Store App Bundle under app/build/outputs/bundle/release/app-release.aab
 ./gradlew bundleRelease
 ```
-Outputs the signed App Bundle under `app/build/outputs/bundle/release/app-release.aab`.
