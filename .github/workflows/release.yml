@@ -24,27 +24,57 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check if release already has uploaded APKs
+        id: check_existing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+            exit 0
+          fi
+          RELEASE_TAG="${INPUT_TAG:-${GITHUB_REF_NAME}}"
+          apk_count="$(gh release view "${RELEASE_TAG}" --repo "${GITHUB_REPOSITORY}" --json assets --jq '[.assets[].name | select(endswith(".apk"))] | length' 2>/dev/null || echo 0)"
+          if [ "${apk_count}" -gt 0 ]; then
+            echo "::notice::Release ${RELEASE_TAG} already has ${apk_count} APK asset(s); skipping duplicate CI build."
+            echo "skip=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "skip=false" >> "${GITHUB_OUTPUT}"
+          fi
+
       - name: Check out repository
+        if: steps.check_existing.outputs.skip != 'true'
         uses: actions/checkout@v4
 
       - name: Set up JDK 21
+        if: steps.check_existing.outputs.skip != 'true'
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: "21"
 
       - name: Set up Gradle
+        if: steps.check_existing.outputs.skip != 'true'
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Ensure Android SDK 37 & Build Tools 37.0.0
+      - name: Set up Android SDK
+        if: steps.check_existing.outputs.skip != 'true'
+        uses: android-actions/setup-android@v3
+
+      - name: Ensure Android SDK 37.0 & Build Tools 37.0.0
+        if: steps.check_existing.outputs.skip != 'true'
         run: |
           yes | "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" --licenses || true
-          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37" "build-tools;37.0.0"
+          "${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0"
 
       - name: Run unit tests
+        if: steps.check_existing.outputs.skip != 'true'
         run: ./gradlew testDebugUnitTest :core:model:test
 
       - name: Build signed release APKs
+        if: steps.check_existing.outputs.skip != 'true'
         env:
           LUMYN_KEYSTORE_BASE64: ${{ secrets.LUMYN_KEYSTORE_BASE64 }}
           LUMYN_KEYSTORE_PATH: ${{ runner.temp }}/lumyn-release.jks
@@ -61,6 +91,7 @@ jobs:
           ./gradlew :app:assembleRelease
 
       - name: Verify APK signatures & privacy, and stage release assets
+        if: steps.check_existing.outputs.skip != 'true'
         env:
           INPUT_TAG: ${{ inputs.tag }}
         run: |
@@ -105,6 +136,7 @@ jobs:
         run: rm -f "${RUNNER_TEMP}/lumyn-release.jks"
 
       - name: Publish GitHub Release
+        if: steps.check_existing.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
