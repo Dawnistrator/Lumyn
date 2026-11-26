@@ -212,6 +212,7 @@ class LumynPlaybackController @Inject constructor(
         val clamped = clampPlaybackSpeed(speed)
         withController { player ->
             player.setPlaybackSpeed(clamped)
+            syncStateFromController()
         }
     }
 

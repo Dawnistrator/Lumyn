@@ -3,6 +3,7 @@ package com.lumyn.core.mediascanner
 import com.lumyn.core.mediascanner.metadata.ReplayGainTagParser
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
+import java.nio.channels.SeekableByteChannel
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Test
@@ -124,6 +125,120 @@ class ReplayGainTagParserTest {
         val tags = ReplayGainTagParser.parseBytes(mp4)
         assertEquals(-5.40f, tags.trackGainDb!!, 0.01f)
         assertEquals(0.912f, tags.trackPeak!!, 0.001f)
+    }
+
+    @Test
+    fun parsesSeekableFlacAndId3v2WhenLargeArtworkPrecedesReplayGainTags() {
+        val flacWithArt = buildFlacWithLargePictureBeforeComments(
+            pictureBytes = 100_000,
+            comments = listOf(
+                "REPLAYGAIN_TRACK_GAIN=-5.25 dB",
+                "REPLAYGAIN_TRACK_PEAK=0.910000",
+            ),
+        )
+        val flacTags = ReplayGainTagParser.parseSeekableFlac(InMemorySeekableByteChannel(flacWithArt))
+        assertEquals(-5.25f, flacTags.trackGainDb!!, 0.01f)
+        assertEquals(0.91f, flacTags.trackPeak!!, 0.001f)
+
+        val id3WithApic = buildId3v23WithLargeApicBeforeTxxx(
+            apicBytes = 100_000,
+            entries = listOf(
+                "REPLAYGAIN_ALBUM_GAIN" to "-7.75 dB",
+                "REPLAYGAIN_ALBUM_PEAK" to "0.980000",
+            ),
+        )
+        val id3Tags = ReplayGainTagParser.parseSeekableId3v2(InMemorySeekableByteChannel(id3WithApic))
+        assertEquals(-7.75f, id3Tags.albumGainDb!!, 0.01f)
+        assertEquals(0.98f, id3Tags.albumPeak!!, 0.001f)
+    }
+
+    private fun buildFlacWithLargePictureBeforeComments(
+        pictureBytes: Int,
+        comments: List<String>,
+    ): ByteArray {
+        val vorbis = encodeVorbisComments("TestVendor", comments)
+        val out = ByteArrayOutputStream()
+        out.write("fLaC".toByteArray(Charsets.US_ASCII))
+        // STREAMINFO (type 0, non-last, 34 bytes)
+        out.write(0)
+        out.write(0)
+        out.write(0)
+        out.write(34)
+        out.write(ByteArray(34))
+        // PICTURE (type 6, non-last)
+        out.write(6)
+        out.write((pictureBytes ushr 16) and 0xFF)
+        out.write((pictureBytes ushr 8) and 0xFF)
+        out.write(pictureBytes and 0xFF)
+        out.write(ByteArray(pictureBytes))
+        // VORBIS_COMMENT (type 4, last = 0x84)
+        out.write(0x84)
+        out.write((vorbis.size ushr 16) and 0xFF)
+        out.write((vorbis.size ushr 8) and 0xFF)
+        out.write(vorbis.size and 0xFF)
+        out.write(vorbis)
+        return out.toByteArray()
+    }
+
+    private fun buildId3v23WithLargeApicBeforeTxxx(
+        apicBytes: Int,
+        entries: List<Pair<String, String>>,
+    ): ByteArray {
+        val frames = ByteArrayOutputStream()
+        frames.write("APIC".toByteArray(Charsets.US_ASCII))
+        writeBeInt(frames, apicBytes)
+        frames.write(0)
+        frames.write(0)
+        frames.write(ByteArray(apicBytes))
+        entries.forEach { (desc, value) ->
+            val payload = ByteArrayOutputStream()
+            payload.write(0)
+            payload.write(desc.toByteArray(Charsets.ISO_8859_1))
+            payload.write(0)
+            payload.write(value.toByteArray(Charsets.ISO_8859_1))
+            val pBytes = payload.toByteArray()
+            frames.write("TXXX".toByteArray(Charsets.US_ASCII))
+            writeBeInt(frames, pBytes.size)
+            frames.write(0)
+            frames.write(0)
+            frames.write(pBytes)
+        }
+        val body = frames.toByteArray()
+        val out = ByteArrayOutputStream()
+        out.write("ID3".toByteArray(Charsets.US_ASCII))
+        out.write(3)
+        out.write(0)
+        out.write(0)
+        writeSynchsafe(out, body.size)
+        out.write(body)
+        return out.toByteArray()
+    }
+
+    private class InMemorySeekableByteChannel(private val data: ByteArray) : SeekableByteChannel {
+        private var pos = 0L
+        private var open = true
+
+        override fun read(dst: ByteBuffer): Int {
+            if (pos >= data.size) return -1
+            val count = minOf(dst.remaining(), (data.size - pos).toInt())
+            dst.put(data, pos.toInt(), count)
+            pos += count
+            return count
+        }
+
+        override fun write(src: ByteBuffer): Int = throw UnsupportedOperationException()
+        override fun position(): Long = pos
+        override fun position(newPosition: Long): SeekableByteChannel {
+            pos = newPosition.coerceAtLeast(0L)
+            return this
+        }
+
+        override fun size(): Long = data.size.toLong()
+        override fun truncate(size: Long): SeekableByteChannel = throw UnsupportedOperationException()
+        override fun isOpen(): Boolean = open
+        override fun close() {
+            open = false
+        }
     }
 
     private fun buildMinimalFlacWithComments(comments: List<String>): ByteArray {

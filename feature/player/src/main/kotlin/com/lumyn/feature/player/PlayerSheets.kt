@@ -66,6 +66,7 @@ import com.lumyn.core.designsystem.component.formatDurationMs
 import com.lumyn.core.designsystem.icon.LumynIcons
 import com.lumyn.core.model.SleepTimerState
 import com.lumyn.core.model.Track
+import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -512,7 +513,9 @@ fun PlaybackSpeedSheet(
         trackRange = 0.5f..2.0f,
     )
     LaunchedEffect(currentSpeed) {
-        sliderState.value = currentSpeed.coerceIn(0.5f, 2.0f)
+        if (!sliderState.isDragging) {
+            sliderState.value = currentSpeed.coerceIn(0.5f, 2.0f)
+        }
     }
     val displaySpeed = (sliderState.value * 20f).roundToInt() / 20f
     val presets = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
@@ -586,8 +589,8 @@ internal fun formatSpeedLabel(speed: Float): String {
     return if (rounded % 1f == 0f) {
         "${rounded.toInt()}.0x"
     } else if ((rounded * 10f) % 1f == 0f) {
-        "%.1fx".format(rounded)
+        String.format(Locale.US, "%.1fx", rounded)
     } else {
-        "%.2fx".format(rounded)
+        String.format(Locale.US, "%.2fx", rounded)
     }
 }

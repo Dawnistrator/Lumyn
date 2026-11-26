@@ -6,41 +6,91 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import com.lumyn.core.model.EqualizerSettings
 import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.atomic.AtomicReference
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class DspConfigSnapshot(
+    val version: Long = 1L,
+    val settings: EqualizerSettings = EqualizerSettings(),
+    val bypassed: Boolean = false,
+    val trackReplayGainDb: Float? = null,
+    val albumReplayGainDb: Float? = null,
+    val trackReplayGainPeak: Float? = null,
+    val albumReplayGainPeak: Float? = null,
+)
+
 /**
- * Real-time Media3 [AudioProcessor] executing inside `DefaultAudioSink` when running in
- * DSP 32-bit Float mode. Supports live atomic parameter updates without dropping playback.
+ * Thread-safe, application-scoped store holding the active DSP configuration and current track
+ * ReplayGain metadata. Read lock-free by per-player [LumynDspAudioProcessor] instances.
  */
 @Singleton
-@androidx.annotation.OptIn(UnstableApi::class)
-class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
+class LumynDspConfigStore @Inject constructor() {
 
-    private data class DspConfigSnapshot(
-        val version: Long,
-        val settings: EqualizerSettings,
-        val bypassed: Boolean,
-        val trackReplayGainDb: Float?,
-        val albumReplayGainDb: Float?,
-        val trackReplayGainPeak: Float?,
-        val albumReplayGainPeak: Float?,
-    )
+    private val versionCounter = AtomicLong(1L)
+    private val state = AtomicReference(DspConfigSnapshot())
+
+    val snapshot: DspConfigSnapshot
+        get() = state.get()
+
+    fun updateAll(
+        settings: EqualizerSettings,
+        bypassed: Boolean,
+        trackReplayGainDb: Float? = null,
+        albumReplayGainDb: Float? = null,
+        trackReplayGainPeak: Float? = null,
+        albumReplayGainPeak: Float? = null,
+    ) {
+        val nextVersion = versionCounter.incrementAndGet()
+        state.set(
+            DspConfigSnapshot(
+                version = nextVersion,
+                settings = settings,
+                bypassed = bypassed,
+                trackReplayGainDb = trackReplayGainDb,
+                albumReplayGainDb = albumReplayGainDb,
+                trackReplayGainPeak = trackReplayGainPeak,
+                albumReplayGainPeak = albumReplayGainPeak,
+            ),
+        )
+    }
+
+    fun updateEqualizerSettings(transform: (EqualizerSettings) -> EqualizerSettings) {
+        state.updateAndGet { prev ->
+            prev.copy(
+                version = versionCounter.incrementAndGet(),
+                settings = transform(prev.settings),
+            )
+        }
+    }
+
+    fun updateBypassed(bypassed: Boolean) {
+        state.updateAndGet { prev ->
+            if (prev.bypassed == bypassed) {
+                prev
+            } else {
+                prev.copy(
+                    version = versionCounter.incrementAndGet(),
+                    bypassed = bypassed,
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Real-time Media3 [AudioProcessor] executing inside `DefaultAudioSink` when running in
+ * DSP 32-bit Float mode. Converts incoming PCM to 32-bit float (`C.ENCODING_PCM_FLOAT`)
+ * and applies live atomic EQ, ReplayGain, L/R balance, and mono downmix updates.
+ */
+@androidx.annotation.OptIn(UnstableApi::class)
+class LumynDspAudioProcessor(
+    private val configStore: LumynDspConfigStore = LumynDspConfigStore(),
+) : BaseAudioProcessor() {
 
     private val engine = BiquadDspEngine()
-    private val versionCounter = AtomicLong(1L)
-
-    @Volatile
-    private var publishedSnapshot = DspConfigSnapshot(
-        version = 1L,
-        settings = EqualizerSettings(),
-        bypassed = false,
-        trackReplayGainDb = null,
-        albumReplayGainDb = null,
-        trackReplayGainPeak = null,
-        albumReplayGainPeak = null,
-    )
     private var appliedVersion = 0L
     private var scratchSamples = FloatArray(0)
 
@@ -52,9 +102,7 @@ class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
         trackReplayGainPeak: Float? = null,
         albumReplayGainPeak: Float? = null,
     ) {
-        val nextVersion = versionCounter.incrementAndGet()
-        publishedSnapshot = DspConfigSnapshot(
-            version = nextVersion,
+        configStore.updateAll(
             settings = settings,
             bypassed = bypassed,
             trackReplayGainDb = trackReplayGainDb,
@@ -75,12 +123,11 @@ class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
         ) {
             throw AudioProcessor.UnhandledAudioFormatException(inputAudioFormat)
         }
-        engine.configure(
-            sampleRateHz = inputAudioFormat.sampleRate,
-            channelCount = inputAudioFormat.channelCount,
+        return AudioProcessor.AudioFormat(
+            inputAudioFormat.sampleRate,
+            inputAudioFormat.channelCount,
+            C.ENCODING_PCM_FLOAT,
         )
-        syncConfigIfNeeded()
-        return inputAudioFormat
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
@@ -89,9 +136,17 @@ class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
 
         syncConfigIfNeeded()
 
-        if (!engine.isProcessingActive() || inputAudioFormat == AudioProcessor.AudioFormat.NOT_SET) {
+        if (inputAudioFormat == AudioProcessor.AudioFormat.NOT_SET) {
+            inputBuffer.position(inputBuffer.limit())
+            return
+        }
+
+        if (inputAudioFormat.encoding == C.ENCODING_PCM_FLOAT &&
+            !engine.isProcessingActive() &&
+            inputBuffer.order() == ByteOrder.nativeOrder()
+        ) {
             val out = replaceOutputBuffer(remaining)
-            out.order(inputBuffer.order())
+            out.order(ByteOrder.nativeOrder())
             out.put(inputBuffer)
             out.flip()
             return
@@ -102,7 +157,10 @@ class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
             C.ENCODING_PCM_16BIT -> 2
             C.ENCODING_PCM_24BIT -> 3
             C.ENCODING_PCM_32BIT -> 4
-            else -> return
+            else -> {
+                inputBuffer.position(inputBuffer.limit())
+                return
+            }
         }
         val channelCount = inputAudioFormat.channelCount.coerceAtLeast(1)
         val totalSamples = remaining / bytesPerSample
@@ -147,64 +205,42 @@ class LumynDspAudioProcessor @Inject constructor() : BaseAudioProcessor() {
             }
         }
 
-        engine.processInterleavedFloats(scratchSamples, frameCount)
-
-        val outBytes = usedSamples * bytesPerSample
-        val outBuffer = replaceOutputBuffer(outBytes)
-        outBuffer.order(inputBuffer.order())
-
-        when (inputAudioFormat.encoding) {
-            C.ENCODING_PCM_FLOAT -> {
-                for (i in 0 until usedSamples) {
-                    outBuffer.putFloat(scratchSamples[i])
-                }
-            }
-
-            C.ENCODING_PCM_16BIT -> {
-                for (i in 0 until usedSamples) {
-                    val s = (scratchSamples[i].coerceIn(-1f, 1f) * 32_767f)
-                        .toInt()
-                        .coerceIn(-32_768, 32_767)
-                        .toShort()
-                    outBuffer.putShort(s)
-                }
-            }
-
-            C.ENCODING_PCM_24BIT -> {
-                for (i in 0 until usedSamples) {
-                    val v = (scratchSamples[i].coerceIn(-1f, 1f) * 8_388_607f)
-                        .toInt()
-                        .coerceIn(-8_388_608, 8_388_607)
-                    outBuffer.put((v and 0xFF).toByte())
-                    outBuffer.put(((v shr 8) and 0xFF).toByte())
-                    outBuffer.put(((v shr 16) and 0xFF).toByte())
-                }
-            }
-
-            C.ENCODING_PCM_32BIT -> {
-                for (i in 0 until usedSamples) {
-                    val v = (scratchSamples[i].coerceIn(-1f, 1f).toDouble() * 2_147_483_647.0)
-                        .toLong()
-                        .coerceIn(Int.MIN_VALUE.toLong(), Int.MAX_VALUE.toLong())
-                        .toInt()
-                    outBuffer.putInt(v)
-                }
-            }
+        if (inputBuffer.hasRemaining()) {
+            inputBuffer.position(inputBuffer.limit())
         }
 
+        if (engine.isProcessingActive()) {
+            engine.processInterleavedFloats(scratchSamples, frameCount)
+        }
+
+        val outBytes = usedSamples * 4
+        val outBuffer = replaceOutputBuffer(outBytes)
+        outBuffer.order(ByteOrder.nativeOrder())
+        for (i in 0 until usedSamples) {
+            outBuffer.putFloat(scratchSamples[i])
+        }
         outBuffer.flip()
     }
 
     override fun onFlush(streamMetadata: AudioProcessor.StreamMetadata) {
+        if (inputAudioFormat != AudioProcessor.AudioFormat.NOT_SET) {
+            engine.configure(
+                sampleRateHz = inputAudioFormat.sampleRate,
+                channelCount = inputAudioFormat.channelCount,
+            )
+        }
         engine.resetState()
+        appliedVersion = 0L
+        syncConfigIfNeeded()
     }
 
     override fun onReset() {
         engine.resetState()
+        appliedVersion = 0L
     }
 
     private fun syncConfigIfNeeded() {
-        val snap = publishedSnapshot
+        val snap = configStore.snapshot
         if (snap.version != appliedVersion) {
             appliedVersion = snap.version
             engine.updateSettings(

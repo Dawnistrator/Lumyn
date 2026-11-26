@@ -27,7 +27,7 @@ import java.util.ArrayList
 class LumynRenderersFactory(
     context: Context,
     private val audioOutputMode: AudioOutputMode = AudioOutputMode.DSP_FLOAT_32,
-    private val dspAudioProcessor: LumynDspAudioProcessor? = null,
+    private val dspConfigStore: LumynDspConfigStore? = null,
 ) : DefaultRenderersFactory(context) {
 
     init {
@@ -46,12 +46,13 @@ class LumynRenderersFactory(
         enableFloatOutput: Boolean,
         enableAudioTrackPlaybackParams: Boolean,
     ): AudioSink {
-        val useFloatOutput = audioOutputMode == AudioOutputMode.DSP_FLOAT_32
         val builder = DefaultAudioSink.Builder(context)
-            .setEnableFloatOutput(useFloatOutput)
-            .setEnableAudioOutputPlaybackParameters(enableAudioTrackPlaybackParams)
-        if (useFloatOutput && dspAudioProcessor != null) {
-            builder.setAudioProcessors(arrayOf(dspAudioProcessor))
+            .setEnableFloatOutput(false)
+            .setEnableAudioOutputPlaybackParameters(false)
+        if (audioOutputMode == AudioOutputMode.DSP_FLOAT_32 && dspConfigStore != null) {
+            builder.setAudioProcessorChain(
+                LumynAudioProcessorChain(LumynDspAudioProcessor(dspConfigStore)),
+            )
         }
         return builder.build()
     }

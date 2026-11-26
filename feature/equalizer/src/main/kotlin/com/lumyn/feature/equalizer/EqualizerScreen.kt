@@ -110,14 +110,18 @@ fun EqualizerEntry(
         onSwitchToDspMode = viewModel::switchToDspMode,
         onEnabledChange = viewModel::setEnabled,
         onSelectPreset = viewModel::selectPreset,
+        onPreampPreview = viewModel::previewPreampDb,
         onPreampChange = viewModel::setPreampDb,
+        onBandGainPreview = viewModel::previewBandGain,
         onBandGainChange = viewModel::setBandGain,
         onImportAutoEqClick = {
             autoEqLauncher.launch(arrayOf("text/plain", "text/*"))
         },
         onClearParametricFilters = viewModel::clearParametricFilters,
         onReplayGainModeChange = viewModel::setReplayGainMode,
+        onReplayGainPreampPreview = viewModel::previewReplayGainPreampDb,
         onReplayGainPreampChange = viewModel::setReplayGainPreampDb,
+        onChannelBalancePreview = viewModel::previewChannelBalance,
         onChannelBalanceChange = viewModel::setChannelBalance,
         onMonoAudioChange = viewModel::setMonoAudio,
         onCrossfadeChange = viewModel::setCrossfadeDurationSec,
@@ -139,12 +143,16 @@ fun EqualizerScreen(
     onSwitchToDspMode: () -> Unit = {},
     onEnabledChange: (Boolean) -> Unit = {},
     onSelectPreset: (EqualizerPreset) -> Unit = {},
+    onPreampPreview: (Float) -> Unit = {},
     onPreampChange: (Float) -> Unit = {},
+    onBandGainPreview: (Int, Float) -> Unit = { _, _ -> },
     onBandGainChange: (Int, Float) -> Unit = { _, _ -> },
     onImportAutoEqClick: () -> Unit = {},
     onClearParametricFilters: () -> Unit = {},
     onReplayGainModeChange: (ReplayGainMode) -> Unit = {},
+    onReplayGainPreampPreview: (Float) -> Unit = {},
     onReplayGainPreampChange: (Float) -> Unit = {},
+    onChannelBalancePreview: (Float) -> Unit = {},
     onChannelBalanceChange: (Float) -> Unit = {},
     onMonoAudioChange: (Boolean) -> Unit = {},
     onCrossfadeChange: (Int) -> Unit = {},
@@ -294,6 +302,7 @@ fun EqualizerScreen(
                         valueDb = settings.preampDb,
                         valueRange = EqualizerSettings.MIN_GAIN_DB..EqualizerSettings.MAX_GAIN_DB,
                         enabled = settings.enabled,
+                        onValuePreview = onPreampPreview,
                         onValueCommit = onPreampChange,
                     )
                     LumynListDivider()
@@ -304,6 +313,7 @@ fun EqualizerScreen(
                             valueDb = gains[index],
                             valueRange = EqualizerSettings.MIN_GAIN_DB..EqualizerSettings.MAX_GAIN_DB,
                             enabled = settings.enabled,
+                            onValuePreview = { nextDb -> onBandGainPreview(index, nextDb) },
                             onValueCommit = { nextDb -> onBandGainChange(index, nextDb) },
                         )
                         if (index < StandardEqFrequenciesHz.lastIndex) {
@@ -350,6 +360,7 @@ fun EqualizerScreen(
                         valueDb = settings.replayGainPreampDb,
                         valueRange = -6f..6f,
                         enabled = settings.replayGainMode != ReplayGainMode.OFF,
+                        onValuePreview = onReplayGainPreampPreview,
                         onValueCommit = onReplayGainPreampChange,
                     )
                 }
@@ -358,6 +369,7 @@ fun EqualizerScreen(
                 LumynListGroup {
                     BalanceSliderRow(
                         balance = settings.channelBalance,
+                        onBalancePreview = onChannelBalancePreview,
                         onBalanceCommit = onChannelBalanceChange,
                     )
                     LumynListDivider()
@@ -431,6 +443,7 @@ private fun DbSliderRow(
     valueDb: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     enabled: Boolean,
+    onValuePreview: (Float) -> Unit = {},
     onValueCommit: (Float) -> Unit,
 ) {
     val sliderState = rememberSliderState(
@@ -438,7 +451,9 @@ private fun DbSliderRow(
         trackRange = valueRange,
     )
     LaunchedEffect(valueDb, valueRange) {
-        sliderState.value = valueDb.coerceIn(valueRange.start, valueRange.endInclusive)
+        if (!sliderState.isDragging) {
+            sliderState.value = valueDb.coerceIn(valueRange.start, valueRange.endInclusive)
+        }
     }
     Row(
         modifier = Modifier
@@ -457,7 +472,14 @@ private fun DbSliderRow(
         )
         Slider(
             state = sliderState,
-            onValueChange = { raw -> sliderState.value = (raw * 2f).roundToInt() / 2f },
+            onValueChange = { raw ->
+                val snapped = ((raw * 2f).roundToInt() / 2f)
+                    .coerceIn(valueRange.start, valueRange.endInclusive)
+                if (sliderState.value != snapped) {
+                    sliderState.value = snapped
+                    onValuePreview(snapped)
+                }
+            },
             onValueChangeFinished = { onValueCommit(sliderState.value) },
             enabled = enabled,
             modifier = Modifier.weight(1f),
@@ -478,6 +500,7 @@ private fun DbSliderRow(
 @Composable
 private fun BalanceSliderRow(
     balance: Float,
+    onBalancePreview: (Float) -> Unit = {},
     onBalanceCommit: (Float) -> Unit,
 ) {
     val sliderState = rememberSliderState(
@@ -485,7 +508,9 @@ private fun BalanceSliderRow(
         trackRange = -1f..1f,
     )
     LaunchedEffect(balance) {
-        sliderState.value = balance.coerceIn(-1f, 1f)
+        if (!sliderState.isDragging) {
+            sliderState.value = balance.coerceIn(-1f, 1f)
+        }
     }
     Column(
         modifier = Modifier
@@ -505,7 +530,13 @@ private fun BalanceSliderRow(
         }
         Slider(
             state = sliderState,
-            onValueChange = { raw -> sliderState.value = ((raw * 20f).roundToInt() / 20f).coerceIn(-1f, 1f) },
+            onValueChange = { raw ->
+                val snapped = ((raw * 20f).roundToInt() / 20f).coerceIn(-1f, 1f)
+                if (sliderState.value != snapped) {
+                    sliderState.value = snapped
+                    onBalancePreview(snapped)
+                }
+            },
             onValueChangeFinished = { onBalanceCommit(sliderState.value) },
         )
     }
@@ -524,7 +555,9 @@ private fun CrossfadeSliderRow(
         trackRange = 0f..maxSec,
     )
     LaunchedEffect(durationSec) {
-        sliderState.value = durationSec.toFloat().coerceIn(0f, maxSec)
+        if (!sliderState.isDragging) {
+            sliderState.value = durationSec.toFloat().coerceIn(0f, maxSec)
+        }
     }
     Column(
         modifier = Modifier

@@ -24,6 +24,111 @@ object ReplayGainTagParser {
         return parseBytes(header)
     }
 
+    fun parseSeekableFlac(channel: SeekableByteChannel): ReplayGainTags {
+        val fileSize = channel.size()
+        if (fileSize < 8L) return ReplayGainTags()
+        val magicBuf = ByteBuffer.allocate(4)
+        channel.position(0L)
+        if (readFully(channel, magicBuf) < 4) return ReplayGainTags()
+        if (!matchesAscii(magicBuf.array(), 4, 0, "fLaC")) return ReplayGainTags()
+
+        var offset = 4L
+        val hdrBuf = ByteBuffer.allocate(4)
+        while (offset + 4L <= fileSize) {
+            hdrBuf.clear()
+            channel.position(offset)
+            if (readFully(channel, hdrBuf) < 4) break
+            val hdr = hdrBuf.array()
+            val headerByte = hdr[0].toInt() and 0xFF
+            val isLast = (headerByte and 0x80) != 0
+            val blockType = headerByte and 0x7F
+            val blockSize = ((hdr[1].toInt() and 0xFF) shl 16) or
+                ((hdr[2].toInt() and 0xFF) shl 8) or
+                (hdr[3].toInt() and 0xFF)
+            val dataStart = offset + 4L
+            if (blockSize < 0 || dataStart + blockSize > fileSize) break
+            if (blockType == 4) {
+                val readLen = blockSize.coerceAtMost(MAX_FLAC_COMMENT_BYTES)
+                if (readLen <= 0) return ReplayGainTags()
+                val buf = ByteBuffer.allocate(readLen)
+                channel.position(dataStart)
+                val read = readFully(channel, buf)
+                return if (read > 0) parseVorbisComments(buf.array(), 0, read) else ReplayGainTags()
+            }
+            offset = dataStart + blockSize
+            if (isLast) break
+        }
+        return ReplayGainTags()
+    }
+
+    fun parseSeekableId3v2(channel: SeekableByteChannel): ReplayGainTags {
+        val fileSize = channel.size()
+        if (fileSize < 10L) return ReplayGainTags()
+        val hdrBuf = ByteBuffer.allocate(10)
+        channel.position(0L)
+        if (readFully(channel, hdrBuf) < 10) return ReplayGainTags()
+        val hdr = hdrBuf.array()
+        if (!matchesAscii(hdr, 10, 0, "ID3")) return ReplayGainTags()
+        val majorVersion = hdr[3].toInt() and 0xFF
+        if (majorVersion < 3) return ReplayGainTags()
+        val flags = hdr[5].toInt() and 0xFF
+        val isUnsync = (flags and 0x80) != 0
+        val tagSize = decodeSynchsafe(hdr, 6)
+        val tagEnd = (10L + tagSize).coerceAtMost(fileSize)
+
+        if (isUnsync) {
+            val totalToRead = tagEnd.coerceAtMost(MAX_ID3_UNSYNC_BYTES.toLong()).toInt()
+            if (totalToRead < 10) return ReplayGainTags()
+            val buf = ByteBuffer.allocate(totalToRead)
+            channel.position(0L)
+            val read = readFully(channel, buf)
+            return if (read >= 10) parseId3v2(buf.array(), read) else ReplayGainTags()
+        }
+
+        var pos = 10L
+        if ((flags and 0x40) != 0 && pos + 4L <= tagEnd) {
+            val extBuf = ByteBuffer.allocate(4)
+            channel.position(pos)
+            if (readFully(channel, extBuf) < 4) return ReplayGainTags()
+            val extArr = extBuf.array()
+            val extSize = if (majorVersion >= 4) decodeSynchsafe(extArr, 0) else readIntBe(extArr, 0)
+            pos += if (majorVersion >= 4) extSize.coerceAtLeast(4).toLong() else 4L + extSize.coerceAtLeast(0).toLong()
+        }
+
+        val acc = TagAccumulator()
+        val frameHdrBuf = ByteBuffer.allocate(10)
+        while (pos + 10L <= tagEnd) {
+            frameHdrBuf.clear()
+            channel.position(pos)
+            if (readFully(channel, frameHdrBuf) < 10) break
+            val fHdr = frameHdrBuf.array()
+            val frameId = String(fHdr, 0, 4, Charsets.US_ASCII)
+            if (frameId.all { it == '\u0000' }) break
+            val frameSize = if (majorVersion >= 4) decodeSynchsafe(fHdr, 4) else readIntBe(fHdr, 4)
+            val frameFlags1 = fHdr[9].toInt() and 0xFF
+            val dataStart = pos + 10L
+            if (frameSize <= 0 || dataStart + frameSize > tagEnd) break
+            if (frameId == "TXXX") {
+                val readLen = frameSize.coerceAtMost(MAX_ID3_TXXX_BYTES)
+                val payloadBuf = ByteBuffer.allocate(readLen)
+                channel.position(dataStart)
+                val read = readFully(channel, payloadBuf)
+                if (read > 0) {
+                    val payload = payloadBuf.array()
+                    val decodedFrame = if (majorVersion >= 4 && (frameFlags1 and 0x02) != 0) {
+                        val clean = removeId3Unsynchronization(payload, 0, read)
+                        parseId3Txxx(clean, 0, clean.size)
+                    } else {
+                        parseId3Txxx(payload, 0, read)
+                    }
+                    decodedFrame?.let { (desc, value) -> acc.accept(desc, value) }
+                }
+            }
+            pos = dataStart + frameSize.toLong()
+        }
+        return acc.build()
+    }
+
     fun parseSeekableMp4(channel: SeekableByteChannel): ReplayGainTags {
         val fileSize = channel.size()
         var offset = 0L
@@ -458,5 +563,8 @@ object ReplayGainTagParser {
     }
 
     private const val MAX_TAG_BYTES = 128 * 1024
+    private const val MAX_FLAC_COMMENT_BYTES = 512 * 1024
+    private const val MAX_ID3_UNSYNC_BYTES = 2 * 1024 * 1024
+    private const val MAX_ID3_TXXX_BYTES = 16 * 1024
     private const val MAX_MP4_MOOV_BYTES = 8 * 1024 * 1024
 }

@@ -60,7 +60,7 @@ class LumynPlaybackService : MediaLibraryService() {
         fun preferencesDataSource(): LumynPreferencesDataSource
         fun usbBitPerfectManager(): UsbBitPerfectManager
         fun signalPathTracker(): AudioSignalPathTracker
-        fun dspAudioProcessor(): LumynDspAudioProcessor
+        fun dspConfigStore(): LumynDspConfigStore
         fun localMusicRepository(): LocalMusicRepository
         fun widgetNotifier(): PlaybackWidgetNotifier
     }
@@ -201,6 +201,7 @@ class LumynPlaybackService : MediaLibraryService() {
             serviceScope.launch {
                 val track = resolveTrackAsync(mediaSession?.player?.currentMediaItem)
                 currentTrack = track
+                syncDspState()
                 deps.widgetNotifier().onPlaybackStateChanged(track = track, isPlaying = isPlaying)
             }
         }
@@ -305,7 +306,7 @@ class LumynPlaybackService : MediaLibraryService() {
 
         currentMode = AudioOutputMode.DSP_FLOAT_32
         currentEqualizer = EqualizerSettings()
-        syncDspState()
+        deps.dspConfigStore().updateBypassed(currentMode == AudioOutputMode.PURIST_DIRECT_BIT_PERFECT)
 
         val initialPlayer = buildExoPlayer(currentMode)
         val builder = MediaLibrarySession.Builder(this, initialPlayer, libraryCallback)
@@ -318,10 +319,10 @@ class LumynPlaybackService : MediaLibraryService() {
     }
 
     private fun buildExoPlayer(mode: AudioOutputMode): ExoPlayer {
-        val processor = if (mode == AudioOutputMode.DSP_FLOAT_32) deps.dspAudioProcessor() else null
+        val configStore = if (mode == AudioOutputMode.DSP_FLOAT_32) deps.dspConfigStore() else null
         return ExoPlayer.Builder(
             this,
-            LumynRenderersFactory(this, audioOutputMode = mode, dspAudioProcessor = processor),
+            LumynRenderersFactory(this, audioOutputMode = mode, dspConfigStore = configStore),
         )
             .setAudioAttributes(
                 AudioAttributes.Builder()
@@ -368,7 +369,7 @@ class LumynPlaybackService : MediaLibraryService() {
 
     private fun syncDspState() {
         val track = currentTrack
-        deps.dspAudioProcessor().updateSettings(
+        deps.dspConfigStore().updateAll(
             settings = currentEqualizer,
             bypassed = currentMode == AudioOutputMode.PURIST_DIRECT_BIT_PERFECT,
             trackReplayGainDb = track?.replayGainTrackDb,
@@ -589,23 +590,28 @@ class LumynPlaybackService : MediaLibraryService() {
 
         // 2. Outgoing fade-out near end of track if another track is next
         val duration = player.duration
-        if (duration == C.TIME_UNSET ||
-            duration <= totalCrossfadeMs * 2L ||
-            !player.hasNextMediaItem()
-        ) {
+        if (duration == C.TIME_UNSET || !player.hasNextMediaItem()) {
             if (player.volume != 1f) player.volume = 1f
             return MONITOR_IDLE_INTERVAL_MS
         }
 
-        val remainingMs = (duration - player.currentPosition).coerceAtLeast(0L)
-        if (remainingMs <= halfFadeMs) {
+        val speed = player.playbackParameters.speed.coerceAtLeast(0.1f)
+        val wallDurationMs = (duration / speed).toLong()
+        if (wallDurationMs <= totalCrossfadeMs * 2L) {
+            if (player.volume != 1f) player.volume = 1f
+            return MONITOR_IDLE_INTERVAL_MS
+        }
+
+        val remainingMediaMs = (duration - player.currentPosition).coerceAtLeast(0L)
+        val remainingWallMs = (remainingMediaMs / speed).toLong()
+        if (remainingWallMs <= halfFadeMs) {
             pendingAutoCrossfadeFadeIn = true
-            player.volume = CrossfadeCurve.computeFadeOutVolume(remainingMs, halfFadeMs)
+            player.volume = CrossfadeCurve.computeFadeOutVolume(remainingWallMs, halfFadeMs)
             return MONITOR_FADE_INTERVAL_MS
         }
 
         if (player.volume != 1f) player.volume = 1f
-        return if (remainingMs <= halfFadeMs + 800L) MONITOR_FADE_INTERVAL_MS else MONITOR_IDLE_INTERVAL_MS
+        return if (remainingWallMs <= halfFadeMs + 800L) MONITOR_FADE_INTERVAL_MS else MONITOR_IDLE_INTERVAL_MS
     }
 
     private fun isCrossfadeEligible(player: Player?): Boolean =

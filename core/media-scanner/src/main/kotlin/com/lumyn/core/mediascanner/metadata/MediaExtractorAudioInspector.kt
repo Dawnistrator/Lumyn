@@ -156,12 +156,20 @@ class MediaExtractorAudioInspector @Inject constructor(
         if (fromHeader != null && hasAnyGainTag(fromHeader)) {
             return fromHeader
         }
+        val isFlac = ext == "flac" || lowerMime.contains("flac") ||
+            hasHeaderPrefix(headerBytes, "fLaC")
+        val isId3Mp3 = ext == "mp3" || lowerMime.contains("mpeg") ||
+            hasHeaderPrefix(headerBytes, "ID3")
         val isMp4 = ext in MP4_EXTENSIONS || lowerMime.contains("mp4") || lowerMime.contains("alac")
-        if (isMp4) {
+        if (isFlac || isId3Mp3 || isMp4) {
             val fromSeekable = runCatching {
                 context.contentResolver.openFileDescriptor(uri, "r")?.use { pfd ->
                     FileInputStream(pfd.fileDescriptor).use { fis ->
-                        ReplayGainTagParser.parseSeekableMp4(fis.channel)
+                        when {
+                            isFlac -> ReplayGainTagParser.parseSeekableFlac(fis.channel)
+                            isId3Mp3 -> ReplayGainTagParser.parseSeekableId3v2(fis.channel)
+                            else -> ReplayGainTagParser.parseSeekableMp4(fis.channel)
+                        }
                     }
                 }
             }.getOrNull()
@@ -170,6 +178,14 @@ class MediaExtractorAudioInspector @Inject constructor(
             }
         }
         return fromHeader ?: ReplayGainTags()
+    }
+
+    private fun hasHeaderPrefix(headerBytes: ByteArray?, magic: String): Boolean {
+        if (headerBytes == null || headerBytes.size < magic.length) return false
+        for (i in magic.indices) {
+            if (headerBytes[i].toInt().toChar() != magic[i]) return false
+        }
+        return true
     }
 
     private fun readHeaderPrefixSafely(uri: Uri, ext: String, lowerMime: String): ByteArray? = try {

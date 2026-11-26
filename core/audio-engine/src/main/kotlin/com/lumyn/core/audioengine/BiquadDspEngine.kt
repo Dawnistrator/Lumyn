@@ -156,6 +156,7 @@ class BiquadDspEngine {
     }
 
     private fun softLimit(x: Double): Double {
+        if (!x.isFinite()) return 0.0
         val absX = abs(x)
         if (absX <= LIMITER_THRESHOLD) return x
         val sign = if (x >= 0.0) 1.0 else -1.0

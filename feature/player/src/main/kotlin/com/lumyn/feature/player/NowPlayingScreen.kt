@@ -285,16 +285,13 @@ fun NowPlayingScreen(
                             Spacer(Modifier.height(12.dp))
                         }
 
-                        TrackHeadlineRow(
-                            track = track,
-                            onToggleFavorite = { track?.let(actions.onToggleFavorite) },
-                        )
+                        TrackHeadlineRow(track = track)
 
                         if (track != null) {
                             Spacer(Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.Start,
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Surface(
@@ -302,9 +299,12 @@ fun NowPlayingScreen(
                                     shape = CircleShape,
                                     color = MaterialTheme.colorScheme.tertiaryContainer,
                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                                    modifier = Modifier
+                                        .weight(1f, fill = false)
+                                        .padding(end = 12.dp),
                                 ) {
                                     Row(
-                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
@@ -320,6 +320,30 @@ fun NowPlayingScreen(
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
+                                }
+                                FilledTonalIconToggleButton(
+                                    checked = track.isFavorite,
+                                    onCheckedChange = { actions.onToggleFavorite(track) },
+                                    shapes = IconButtonDefaults.toggleableShapes(),
+                                    modifier = Modifier.semantics {
+                                        stateDescription = if (track.isFavorite) "Favorited" else "Not favorited"
+                                    },
+                                ) {
+                                    Icon(
+                                        painter = painterResource(
+                                            if (track.isFavorite) LumynIcons.FavoriteFilled else LumynIcons.FavoriteOutlined,
+                                        ),
+                                        contentDescription = if (track.isFavorite) {
+                                            "Remove from favorites"
+                                        } else {
+                                            "Add to favorites"
+                                        },
+                                        tint = if (track.isFavorite) {
+                                            MaterialTheme.colorScheme.primary
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurfaceVariant
+                                        },
+                                    )
                                 }
                             }
                         }
@@ -583,55 +607,24 @@ private fun ArtworkStageCard(
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun TrackHeadlineRow(
-    track: Track?,
-    onToggleFavorite: () -> Unit,
-) {
-    Row(
+private fun TrackHeadlineRow(track: Track?) {
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Text(
-                text = track?.title ?: "No track playing",
-                style = MaterialTheme.typography.headlineSmallEmphasized,
-                maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_000),
-            )
-            Text(
-                text = track?.artist ?: "Select a track from your library",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_500),
-            )
-        }
-        if (track != null) {
-            FilledTonalIconToggleButton(
-                checked = track.isFavorite,
-                onCheckedChange = { onToggleFavorite() },
-                shapes = IconButtonDefaults.toggleableShapes(),
-                modifier = Modifier.semantics {
-                    stateDescription = if (track.isFavorite) "Favorited" else "Not favorited"
-                },
-            ) {
-                Icon(
-                    painter = painterResource(
-                        if (track.isFavorite) LumynIcons.FavoriteFilled else LumynIcons.FavoriteOutlined,
-                    ),
-                    contentDescription = if (track.isFavorite) "Remove from favorites" else "Add to favorites",
-                    tint = if (track.isFavorite) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
-                )
-            }
-        }
+        Text(
+            text = track?.title ?: "No track playing",
+            style = MaterialTheme.typography.headlineSmallEmphasized,
+            maxLines = 1,
+            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_000),
+        )
+        Text(
+            text = track?.artist ?: "Select a track from your library",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_500),
+        )
     }
 }
 
