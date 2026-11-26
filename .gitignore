@@ -34,3 +34,9 @@ keystore/
 keystore.properties
 captures/
 *.hprof
+
+# Website build & Vercel state
+website/node_modules/
+website/.next/
+website/.vercel/
+website/out/
