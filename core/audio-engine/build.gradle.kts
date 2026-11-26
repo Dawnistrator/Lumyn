@@ -5,8 +5,8 @@ plugins {
 
 android {
     namespace = "com.lumyn.core.audioengine"
-    compileSdk = 36
-    buildToolsVersion = "36.1.0"
+    compileSdk = 37
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         minSdk = 26

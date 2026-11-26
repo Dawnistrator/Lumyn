@@ -17,6 +17,7 @@ import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -85,6 +86,13 @@ class HomeViewModel @Inject constructor(
 
     fun toggleFavorite(track: Track) {
         viewModelScope.launch { musicRepository.toggleFavorite(track.id, !track.isFavorite) }
+    }
+
+    fun loadShuffledLibrary(onReady: (List<Track>) -> Unit) {
+        viewModelScope.launch {
+            val shuffled = musicRepository.tracks.first().shuffled()
+            if (shuffled.isNotEmpty()) onReady(shuffled)
+        }
     }
 
     private data class HomeCatalogSnapshot(

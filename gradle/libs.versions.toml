@@ -1,13 +1,12 @@
 [versions]
 # Build toolchain
-agp = "9.0.1"
+agp = "9.1.1"
 kotlin = "2.4.21"
 ksp = "2.3.14"
 hilt = "2.60.1"
 
-# UI: Compose BOM 2026.06.01 pins androidx.compose.material3 to 1.4.0 (stable) and compose-ui 1.11.4 (compileSdk 35/36).
-# Do NOT bump to BOM 2026.11.01 or later: it moves Material 3 to 1.5.x (Expressive APIs).
-composeBom = "2026.06.01"
+# UI: Compose BOM 2026.11.01 pins androidx.compose.material3 to 1.5.0 (stable Expressive APIs) and compose-ui 1.13.0.
+composeBom = "2026.11.01"
 adaptive = "1.2.0"
 # Kotlin port of Google's Material Color Utilities (com.google.material:* is not published on Maven).
 materialColorUtilities = "4.1.1"

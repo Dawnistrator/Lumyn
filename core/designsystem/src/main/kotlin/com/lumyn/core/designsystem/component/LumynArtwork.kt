@@ -11,6 +11,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
@@ -25,12 +26,13 @@ fun LumynArtwork(
     contentDescription: String?,
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 8.dp,
+    shape: Shape = RoundedCornerShape(cornerRadius),
     @DrawableRes fallbackIcon: Int = LumynIcons.MusicNote,
     fallbackIconSize: Dp = 24.dp,
 ) {
     Surface(
         modifier = modifier,
-        shape = RoundedCornerShape(cornerRadius),
+        shape = shape,
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
     ) {

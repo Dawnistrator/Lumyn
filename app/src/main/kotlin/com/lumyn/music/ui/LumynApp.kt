@@ -5,7 +5,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,8 +45,9 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.material3.WideNavigationRail
 import androidx.compose.material3.WideNavigationRailItem
 import androidx.compose.material3.WideNavigationRailValue
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberWideNavigationRailState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -144,7 +144,7 @@ fun LumynApp(
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
-    val windowSizeClass = currentWindowAdaptiveInfo(supportLargeAndXLargeWidth = true).windowSizeClass
+    val windowSizeClass = currentWindowAdaptiveInfoV2().windowSizeClass
     val isMediumOrWider = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_MEDIUM_LOWER_BOUND)
     val isExpanded = windowSizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXPANDED_LOWER_BOUND)
 
@@ -228,12 +228,20 @@ fun LumynApp(
                 contentWindowInsets = WindowInsets(0, 0, 0, 0),
                 bottomBar = {
                     Column {
-                        MiniPlayerBar(
-                            state = playbackState,
-                            onPlayPause = wiredActions.onPlayPause,
-                            onNext = wiredActions.onNext,
-                            onOpenNowPlaying = { isNowPlayingOpen = true },
-                        )
+                        AnimatedVisibility(
+                            visible = playbackState.currentTrack != null,
+                            enter = slideInVertically(animationSpec = LumynMotionTokens.spatialFast()) { it },
+                            exit = slideOutVertically(animationSpec = LumynMotionTokens.spatialFast()) { it },
+                        ) {
+                            MiniPlayerBar(
+                                state = playbackState,
+                                onPlayPause = wiredActions.onPlayPause,
+                                onNext = wiredActions.onNext,
+                                onOpenNowPlaying = { isNowPlayingOpen = true },
+                                useAlbumArtTheme = useAlbumArtTheme,
+                                darkTheme = darkTheme,
+                            )
+                        }
                         ShortNavigationBar {
                             TopLevelDestination.entries.forEach { destination ->
                                 val selected = isSelected(destination)
@@ -317,13 +325,21 @@ fun LumynApp(
                                 .then(if (isExpanded) Modifier else Modifier.consumeWindowInsets(bottomInsets)),
                         )
                         if (!isExpanded) {
-                            MiniPlayerBar(
-                                state = playbackState,
-                                onPlayPause = wiredActions.onPlayPause,
-                                onNext = wiredActions.onNext,
-                                onOpenNowPlaying = { isNowPlayingOpen = true },
-                                modifier = Modifier.windowInsetsPadding(bottomInsets),
-                            )
+                            AnimatedVisibility(
+                                visible = playbackState.currentTrack != null,
+                                enter = slideInVertically(animationSpec = LumynMotionTokens.spatialFast()) { it },
+                                exit = slideOutVertically(animationSpec = LumynMotionTokens.spatialFast()) { it },
+                            ) {
+                                MiniPlayerBar(
+                                    state = playbackState,
+                                    onPlayPause = wiredActions.onPlayPause,
+                                    onNext = wiredActions.onNext,
+                                    onOpenNowPlaying = { isNowPlayingOpen = true },
+                                    modifier = Modifier.windowInsetsPadding(bottomInsets),
+                                    useAlbumArtTheme = useAlbumArtTheme,
+                                    darkTheme = darkTheme,
+                                )
+                            }
                         }
                     }
                 }
@@ -382,8 +398,10 @@ fun LumynApp(
 
         val snackbarBottomPadding = when {
             isNowPlayingOpen || isEqualizerOpen || isExpanded -> 16.dp
-            !isMediumOrWider -> 148.dp
-            else -> 80.dp
+            !isMediumOrWider && playbackState.currentTrack != null -> 156.dp
+            !isMediumOrWider -> 88.dp
+            playbackState.currentTrack != null -> 92.dp
+            else -> 16.dp
         }
         SnackbarHost(
             hostState = snackbarHostState,
@@ -556,7 +574,10 @@ private fun AddToPlaylistSheet(
     onCreateAndAdd: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     var showCreateDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showCreateDialog) {
@@ -628,12 +649,12 @@ private fun AddToPlaylistSheet(
                     items(items = playlists, key = { it.id }) { playlist ->
                         val countLabel = if (playlist.trackCount == 1) "1 song" else "${playlist.trackCount} songs"
                         ListItem(
-                            modifier = Modifier.clickable { onSelectPlaylist(playlist) },
+                            onClick = { onSelectPlaylist(playlist) },
                             leadingContent = {
                                 Icon(painterResource(LumynIcons.QueueMusic), contentDescription = null)
                             },
-                            headlineContent = { Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                             supportingContent = { Text(countLabel) },
+                            content = { Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                         )
                     }
                 }

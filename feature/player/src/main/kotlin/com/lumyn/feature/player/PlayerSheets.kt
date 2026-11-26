@@ -19,6 +19,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -29,12 +30,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedListItem
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimeInput
 import androidx.compose.material3.TimePickerDialog
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -76,7 +80,10 @@ fun QueueSheet(
     onSaveAsPlaylist: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val listState = rememberLazyListState(initialFirstVisibleItemIndex = currentIndex.coerceAtLeast(0))
     var showSaveDialog by rememberSaveable { mutableStateOf(false) }
 
@@ -163,12 +170,12 @@ fun QueueSheet(
                         }
 
                         ListItem(
+                            onClick = { onSkipToIndex(index) },
                             modifier = Modifier
                                 .zIndex(if (isDragged) 1f else 0f)
                                 .graphicsLayer {
                                     translationY = if (isDragged) dragOffsetY else 0f
-                                }
-                                .clickable { onSkipToIndex(index) },
+                                },
                             colors = ListItemDefaults.colors(containerColor = bgColor),
                             leadingContent = {
                                 Row(
@@ -251,26 +258,6 @@ fun QueueSheet(
                                     )
                                 }
                             },
-                            headlineContent = {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                ) {
-                                    if (isCurrent) {
-                                        Icon(
-                                            painter = painterResource(LumynIcons.GraphicEq),
-                                            contentDescription = "Now playing",
-                                            modifier = Modifier.size(16.dp),
-                                        )
-                                    }
-                                    Text(
-                                        text = track.title,
-                                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis,
-                                    )
-                                }
-                            },
                             supportingContent = {
                                 Text(
                                     text = "${track.artist} • ${formatDurationMs(track.durationMs)}",
@@ -297,6 +284,26 @@ fun QueueSheet(
                                         contentDescription = "Remove ${track.title} from queue",
                                         enabled = true,
                                         onClick = { onRemoveItem(index) },
+                                    )
+                                }
+                            },
+                            content = {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    if (isCurrent) {
+                                        Icon(
+                                            painter = painterResource(LumynIcons.GraphicEq),
+                                            contentDescription = "Now playing",
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                    Text(
+                                        text = track.title,
+                                        fontWeight = if (isCurrent) FontWeight.SemiBold else FontWeight.Normal,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
                                     )
                                 }
                             },
@@ -378,7 +385,10 @@ fun SleepTimerSheet(
     onCancel: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     var showCustomDialog by rememberSaveable { mutableStateOf(false) }
 
     if (showCustomDialog) {
@@ -439,46 +449,72 @@ fun SleepTimerSheet(
             }
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
-            ListItem(
-                modifier = Modifier.clickable {
-                    onSetEndOfTrack()
-                    onDismiss()
-                },
-                headlineContent = { Text("End of this track") },
-                trailingContent = if (sleepTimer is SleepTimerState.EndOfTrack) {
-                    { Icon(painter = painterResource(LumynIcons.Check), contentDescription = "Active") }
-                } else {
-                    null
-                },
-            )
-            val presetsMinutes = listOf(15, 30, 45, 60)
-            presetsMinutes.forEach { minutes ->
-                ListItem(
-                    modifier = Modifier.clickable {
-                        onSetCountdown(minutes * 60_000L)
+            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
+            com.lumyn.core.designsystem.component.LumynSegmentedColumn(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            ) {
+                val totalRows = 6
+                SegmentedListItem(
+                    onClick = {
+                        onSetEndOfTrack()
                         onDismiss()
                     },
-                    headlineContent = { Text("$minutes minutes") },
+                    shapes = ListItemDefaults.segmentedShapes(0, totalRows),
+                    colors = com.lumyn.core.designsystem.component.lumynSegmentedListItemColors(),
+                    trailingContent = if (sleepTimer is SleepTimerState.EndOfTrack) {
+                        { Icon(painter = painterResource(LumynIcons.Check), contentDescription = "Active") }
+                    } else {
+                        null
+                    },
+                    content = { Text("End of this track") },
+                )
+                val presetsMinutes = listOf(15, 30, 45, 60)
+                presetsMinutes.forEachIndexed { i, minutes ->
+                    SegmentedListItem(
+                        onClick = {
+                            onSetCountdown(minutes * 60_000L)
+                            onDismiss()
+                        },
+                        shapes = ListItemDefaults.segmentedShapes(i + 1, totalRows),
+                        colors = com.lumyn.core.designsystem.component.lumynSegmentedListItemColors(),
+                        content = { Text("$minutes minutes") },
+                    )
+                }
+                SegmentedListItem(
+                    onClick = { showCustomDialog = true },
+                    shapes = ListItemDefaults.segmentedShapes(5, totalRows),
+                    colors = com.lumyn.core.designsystem.component.lumynSegmentedListItemColors(),
+                    supportingContent = { Text("Choose hours & minutes via time dialog") },
+                    content = { Text("Custom duration…") },
                 )
             }
-            ListItem(
-                modifier = Modifier.clickable { showCustomDialog = true },
-                headlineContent = { Text("Custom duration…") },
-                supportingContent = { Text("Choose hours & minutes via time dialog") },
-            )
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+)
 @Composable
 fun PlaybackSpeedSheet(
     currentSpeed: Float,
     onSelectSpeed: (Float) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var sliderSpeed by remember(currentSpeed) { mutableFloatStateOf(currentSpeed) }
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
+    val sliderState = rememberSliderState(
+        value = currentSpeed.coerceIn(0.5f, 2.0f),
+        trackRange = 0.5f..2.0f,
+    )
+    LaunchedEffect(currentSpeed) {
+        sliderState.value = currentSpeed.coerceIn(0.5f, 2.0f)
+    }
+    val displaySpeed = (sliderState.value * 20f).roundToInt() / 20f
     val presets = listOf(0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -493,10 +529,10 @@ fun PlaybackSpeedSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Playback speed", style = MaterialTheme.typography.titleLarge)
+                Text("Playback speed", style = MaterialTheme.typography.titleLargeEmphasized)
                 Text(
-                    text = formatSpeedLabel(sliderSpeed),
-                    style = MaterialTheme.typography.titleMedium,
+                    text = formatSpeedLabel(displaySpeed),
+                    style = MaterialTheme.typography.titleMediumEmphasized,
                     color = MaterialTheme.colorScheme.primary,
                 )
             }
@@ -506,11 +542,11 @@ fun PlaybackSpeedSheet(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 presets.forEach { preset ->
-                    val selected = kotlin.math.abs(sliderSpeed - preset) < 0.02f
+                    val selected = kotlin.math.abs(displaySpeed - preset) < 0.02f
                     FilterChip(
                         selected = selected,
                         onClick = {
-                            sliderSpeed = preset
+                            sliderState.value = preset
                             onSelectSpeed(preset)
                         },
                         label = { Text(formatSpeedLabel(preset)) },
@@ -519,13 +555,13 @@ fun PlaybackSpeedSheet(
             }
 
             Slider(
-                value = sliderSpeed,
+                state = sliderState,
                 onValueChange = { raw ->
-                    val stepped = (raw * 20f).roundToInt() / 20f
-                    sliderSpeed = stepped
+                    sliderState.value = (raw * 20f).roundToInt() / 20f
                 },
-                onValueChangeFinished = { onSelectSpeed(sliderSpeed) },
-                valueRange = 0.5f..2.0f,
+                onValueChangeFinished = {
+                    onSelectSpeed((sliderState.value * 20f).roundToInt() / 20f)
+                },
             )
 
             Row(
@@ -536,7 +572,7 @@ fun PlaybackSpeedSheet(
             ) {
                 OutlinedButton(
                     onClick = {
-                        sliderSpeed = 1.0f
+                        sliderState.value = 1.0f
                         onSelectSpeed(1.0f)
                     },
                 ) { Text("Reset 1.0x") }

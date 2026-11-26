@@ -1,7 +1,6 @@
 package com.lumyn.feature.settings
 
 import android.os.Build
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -16,21 +15,22 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -159,6 +159,7 @@ fun SettingsScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LibrarySection(
     filter: FolderFilterConfig,
@@ -172,19 +173,27 @@ private fun LibrarySection(
     LumynListGroup {
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Folder filter mode") },
             supportingContent = {
                 val options = listOf(
                     FolderFilterMode.BLACKLIST to "Exclude",
                     FolderFilterMode.WHITELIST to "Allow listed",
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    ) {
                         options.forEachIndexed { index, (option, label) ->
-                            SegmentedButton(
-                                selected = filter.mode == option,
-                                onClick = { onModeChange(option) },
-                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            ToggleButton(
+                                checked = filter.mode == option,
+                                onCheckedChange = { if (it) onModeChange(option) },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                },
+                                modifier = Modifier.weight(1f),
                             ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                     }
@@ -197,21 +206,21 @@ private fun LibrarySection(
                     )
                 }
             },
+            content = { Text("Folder filter mode") },
         )
         LumynListDivider()
         ListItem(
-            modifier = Modifier.clickable(onClick = onManageFoldersClick),
+            onClick = onManageFoldersClick,
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Manage folders") },
             supportingContent = { Text("Choose folders to include or exclude") },
             trailingContent = {
                 TextButton(onClick = onManageFoldersClick) { Text("Manage") }
             },
+            content = { Text("Manage folders") },
         )
         LumynListDivider()
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Rescan library") },
             supportingContent = {
                 Text(
                     when (scanStatus) {
@@ -231,6 +240,7 @@ private fun LibrarySection(
                         scanStatus !is ScanStatus.Scanning,
                 ) { Text("Scan") }
             },
+            content = { Text("Rescan library") },
         )
     }
 }
@@ -256,7 +266,10 @@ private fun FolderFilterSheet(
             .distinctBy { it.lowercase() }
             .sortedBy { it.lowercase() }
     }
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val listState = rememberLazyListState()
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -301,8 +314,8 @@ private fun FolderFilterSheet(
                             role = Role.Checkbox,
                             onValueChange = { onToggleFolder(folder) },
                         ),
-                        headlineContent = { Text(folder) },
                         trailingContent = { Checkbox(checked = checked, onCheckedChange = null) },
+                        content = { Text(folder) },
                     )
                 }
             }
@@ -310,6 +323,7 @@ private fun FolderFilterSheet(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AppearanceSection(
     preferences: UserPreferences,
@@ -322,23 +336,33 @@ private fun AppearanceSection(
     LumynListGroup {
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Theme mode") },
             supportingContent = {
                 val options = listOf(
                     ThemeMode.SYSTEM to "System",
                     ThemeMode.LIGHT to "Light",
                     ThemeMode.DARK to "Dark",
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                ) {
                     options.forEachIndexed { index, (mode, label) ->
-                        SegmentedButton(
-                            selected = preferences.themeMode == mode,
-                            onClick = { onThemeModeChange(mode) },
-                            shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                        ToggleButton(
+                            checked = preferences.themeMode == mode,
+                            onCheckedChange = { if (it) onThemeModeChange(mode) },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                            },
+                            modifier = Modifier.weight(1f),
                         ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
             },
+            content = { Text("Theme mode") },
         )
         LumynListDivider()
         SwitchRow(
@@ -363,6 +387,7 @@ private fun AppearanceSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AudioSection(
     mode: AudioOutputMode,
@@ -374,7 +399,7 @@ private fun AudioSection(
     LumynSectionHeader("Hi-Res audio engine")
     LumynListGroup {
         ListItem(
-            modifier = Modifier.clickable(onClick = onOpenEqualizer),
+            onClick = onOpenEqualizer,
             colors = lumynGroupedListItemColors(),
             leadingContent = {
                 Icon(
@@ -383,7 +408,6 @@ private fun AudioSection(
                     modifier = Modifier.size(24.dp),
                 )
             },
-            headlineContent = { Text("Equalizer & DSP") },
             supportingContent = {
                 Text(
                     when {
@@ -399,23 +423,32 @@ private fun AudioSection(
             trailingContent = {
                 TextButton(onClick = onOpenEqualizer) { Text("Open") }
             },
+            content = { Text("Equalizer & DSP") },
         )
         LumynListDivider()
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Audio mode") },
             supportingContent = {
                 val options = listOf(
                     AudioOutputMode.DSP_FLOAT_32 to "DSP 32-bit float",
                     AudioOutputMode.PURIST_DIRECT_BIT_PERFECT to "Purist bit-perfect",
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                    ) {
                         options.forEachIndexed { index, (option, label) ->
-                            SegmentedButton(
-                                selected = mode == option,
-                                onClick = { onModeChange(option) },
-                                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                            ToggleButton(
+                                checked = mode == option,
+                                onCheckedChange = { if (it) onModeChange(option) },
+                                shapes = when (index) {
+                                    0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                    else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                },
+                                modifier = Modifier.weight(1f),
                             ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                         }
                     }
@@ -428,6 +461,7 @@ private fun AudioSection(
                     )
                 }
             },
+            content = { Text("Audio mode") },
         )
         LumynListDivider()
         LumynStatusRow(
@@ -468,7 +502,6 @@ private fun PrivacySection(audioPermission: AudioPermissionStatus, onPermissionA
     LumynListGroup {
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("Audio file access") },
             supportingContent = {
                 Text(
                     when (audioPermission) {
@@ -491,14 +524,15 @@ private fun PrivacySection(audioPermission: AudioPermissionStatus, onPermissionA
                     }
                 }
             },
+            content = { Text("Audio file access") },
         )
         LumynListDivider()
         ListItem(
             colors = lumynGroupedListItemColors(),
-            headlineContent = { Text("100% offline") },
             supportingContent = {
                 Text("Lumyn never requests internet permission, with zero tracking and zero analytics.")
             },
+            content = { Text("100% offline") },
         )
     }
 }
@@ -519,8 +553,8 @@ private fun SwitchRow(
             onValueChange = onCheckedChange,
         ),
         colors = lumynGroupedListItemColors(),
-        headlineContent = { Text(title) },
         supportingContent = { Text(supporting) },
         trailingContent = { Switch(checked = checked, onCheckedChange = null, enabled = enabled) },
+        content = { Text(title) },
     )
 }

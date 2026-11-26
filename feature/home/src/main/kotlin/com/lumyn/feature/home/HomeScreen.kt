@@ -21,10 +21,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -34,6 +39,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -87,6 +93,9 @@ fun HomeEntry(
         onPermissionAction = onPermissionAction,
         onScanClick = viewModel::triggerScan,
         onPlayTracks = onPlayTracks,
+        onShuffleAllClick = {
+            viewModel.loadShuffledLibrary { tracks -> onPlayTracks(tracks, 0) }
+        },
         onPlayNext = onPlayNext,
         onAddToQueue = onAddToQueue,
         onAddToPlaylist = onAddToPlaylist,
@@ -99,7 +108,7 @@ fun HomeEntry(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HomeScreen(
     audioPermission: AudioPermissionStatus,
@@ -116,6 +125,7 @@ fun HomeScreen(
     onOpenAlbum: (Long) -> Unit = {},
     onOpenSmartPlaylist: (SmartPlaylistType) -> Unit = {},
     onOpenStats: () -> Unit = {},
+    onShuffleAllClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val listState = rememberLazyListState()
@@ -125,10 +135,18 @@ fun HomeScreen(
         modifier = modifier,
         topBar = {
             TopAppBar(
-                title = { Text("Lumyn") },
+                title = {
+                    Text(
+                        text = "Lumyn",
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                    )
+                },
                 actions = {
                     if (audioPermission == AudioPermissionStatus.Granted) {
-                        IconButton(onClick = onScanClick) {
+                        IconButton(
+                            onClick = onScanClick,
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(LumynIcons.Refresh),
                                 contentDescription = "Rescan library",
@@ -170,9 +188,16 @@ fun HomeScreen(
             }
 
             item(key = "summary", contentType = "summary") {
-                OfflineSummary(
+                LibraryHeroCard(
                     totalTracks = uiState.totalTrackCount,
                     hiResTracks = uiState.hiResTrackCount,
+                    hasRecentTracks = uiState.recentTracks.isNotEmpty(),
+                    onShuffleAll = onShuffleAllClick,
+                    onPlayRecent = {
+                        if (uiState.recentTracks.isNotEmpty()) {
+                            onPlayTracks(uiState.recentTracks, 0)
+                        }
+                    },
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
@@ -252,6 +277,7 @@ fun HomeScreen(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun SmartPlaylistsRow(
     smartPlaylists: List<SmartPlaylistSummary>,
@@ -272,22 +298,30 @@ private fun SmartPlaylistsRow(
             Surface(
                 onClick = { onOpenSmartPlaylist(item.type) },
                 color = MaterialTheme.colorScheme.surfaceContainer,
-                shape = MaterialTheme.shapes.large,
-                modifier = Modifier.width(156.dp),
+                shape = MaterialTheme.shapes.largeIncreased,
+                modifier = Modifier.width(160.dp),
             ) {
                 Column(
                     modifier = Modifier.padding(14.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Icon(
-                        painter = painterResource(iconRes),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(22.dp),
-                    )
+                    Surface(
+                        shape = MaterialShapes.Cookie7Sided.toShape(),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
                     Text(
                         text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.titleSmallEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -302,6 +336,7 @@ private fun SmartPlaylistsRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ListeningInsightsCard(
     stats: ListeningStats,
@@ -311,7 +346,7 @@ private fun ListeningInsightsCard(
     Surface(
         onClick = onOpenStats,
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.largeIncreased,
         modifier = modifier.fillMaxWidth(),
     ) {
         Row(
@@ -326,9 +361,9 @@ private fun ListeningInsightsCard(
                 modifier = Modifier.size(28.dp),
             )
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text("Listening insights", style = MaterialTheme.typography.titleSmall)
+                Text("Listening insights", style = MaterialTheme.typography.titleSmallEmphasized)
                 val summary = if (stats.totalPlays == 0) {
-                    "Play music to collect 100% offline listening stats"
+                    "Play music to build your listening stats"
                 } else {
                     val hiResPct = (stats.hiResPlays * 100) / stats.totalPlays
                     val playsLabel = if (stats.totalPlays == 1) "1 play" else "${stats.totalPlays} plays"
@@ -347,12 +382,13 @@ private fun ListeningInsightsCard(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ScanProgressBanner(status: ScanStatus.Scanning, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.medium,
+        shape = MaterialTheme.shapes.largeIncreased,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val label = if (status.totalCount > 0) {
@@ -362,17 +398,18 @@ private fun ScanProgressBanner(status: ScanStatus.Scanning, modifier: Modifier =
             }
             Text(text = label, style = MaterialTheme.typography.bodyMedium)
             if (status.totalCount > 0) {
-                LinearProgressIndicator(
+                LinearWavyProgressIndicator(
                     progress = { (status.indexedCount.toFloat() / status.totalCount).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth(),
                 )
             } else {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PermissionBanner(
     status: AudioPermissionStatus,
@@ -384,10 +421,10 @@ private fun PermissionBanner(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.secondaryContainer,
         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.largeIncreased,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Allow audio file access", style = MaterialTheme.typography.titleMedium)
+            Text("Allow audio file access", style = MaterialTheme.typography.titleMediumEmphasized)
             Text(
                 text = if (permanent) {
                     "Permission denied. Open app settings to allow Lumyn to read local music on this device."
@@ -396,56 +433,105 @@ private fun PermissionBanner(
                 },
                 style = MaterialTheme.typography.bodyMedium,
             )
-            Button(onClick = onAction) {
+            Button(
+                onClick = onAction,
+                shapes = ButtonDefaults.shapes(),
+            ) {
                 Text(if (permanent) "Open settings" else "Allow audio access")
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun OfflineSummary(
+private fun LibraryHeroCard(
     totalTracks: Int,
     hiResTracks: Int,
+    hasRecentTracks: Boolean,
+    onShuffleAll: () -> Unit,
+    onPlayRecent: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Surface(
         modifier = modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.large,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLargeIncreased,
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Offline Hi-Res music player", style = MaterialTheme.typography.titleLarge)
-            Text(
-                text = "FLAC, WAV, and other lossless formats played from local storage, " +
-                    "without accounts or internet access.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Surface(
-                    shape = MaterialTheme.shapes.small,
-                    color = MaterialTheme.colorScheme.tertiaryContainer,
-                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "100% offline",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = "Hi-Res music player",
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
+                    )
+                    Text(
+                        text = "Lossless FLAC, WAV, and local audio ready to play.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Surface(
+                    shape = MaterialShapes.SoftBurst.toShape(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(LumynIcons.GraphicEq),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+            }
+            if (totalTracks > 0) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    val songsLabel = if (totalTracks == 1) "1 song" else "$totalTracks songs"
+                    Text(
+                        text = "$songsLabel • $hiResTracks Hi-Res",
+                        style = MaterialTheme.typography.labelMediumEmphasized,
                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     )
                 }
-                if (totalTracks > 0) {
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.secondaryContainer,
-                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onShuffleAll,
+                        shapes = ButtonDefaults.shapes(),
                     ) {
-                        val songsLabel = if (totalTracks == 1) "1 song" else "$totalTracks songs"
-                        Text(
-                            text = "$songsLabel • $hiResTracks Hi-Res",
-                            style = MaterialTheme.typography.labelMedium,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        Icon(
+                            painter = painterResource(LumynIcons.Shuffle),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
                         )
+                        Text("Shuffle all", modifier = Modifier.padding(start = 6.dp))
+                    }
+                    FilledTonalButton(
+                        onClick = onPlayRecent,
+                        enabled = hasRecentTracks,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Icon(
+                            painter = painterResource(LumynIcons.PlayArrow),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text("Play recent", modifier = Modifier.padding(start = 6.dp))
                     }
                 }
             }
@@ -517,21 +603,25 @@ private fun AlbumSpotlightCarousel(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun EmptyLibraryCard(onScanClick: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         modifier = modifier.fillMaxWidth(),
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.largeIncreased,
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("No tracks indexed yet", style = MaterialTheme.typography.titleMedium)
+            Text("No tracks indexed yet", style = MaterialTheme.typography.titleMediumEmphasized)
             Text(
                 text = "Scan local storage or check folder filters in Settings.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            OutlinedButton(onClick = onScanClick) {
+            OutlinedButton(
+                onClick = onScanClick,
+                shapes = ButtonDefaults.shapes(),
+            ) {
                 Text("Scan local music")
             }
         }

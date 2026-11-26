@@ -1,6 +1,7 @@
 package com.lumyn.feature.player
 
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -13,10 +14,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -47,7 +50,7 @@ import com.lumyn.core.model.SleepTimerState
  * Now Playing as a persistent supporting pane for expanded windows (840 dp and wider).
  * Uses the same album-art dynamic colour & transport controls as the full-screen phone player.
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun NowPlayingSupportingPane(
     state: PlaybackState,
@@ -149,10 +152,10 @@ fun NowPlayingSupportingPane(
                     ) {
                         Text(
                             text = track?.title ?: "No track playing",
-                            style = MaterialTheme.typography.titleLarge,
+                            style = MaterialTheme.typography.titleLargeEmphasized,
                             textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                            maxLines = 1,
+                            modifier = Modifier.basicMarquee(iterations = Int.MAX_VALUE, initialDelayMillis = 2_000),
                         )
                         Text(
                             text = track?.artist ?: "Your local collection is ready",
@@ -167,6 +170,7 @@ fun NowPlayingSupportingPane(
                         IconToggleButton(
                             checked = track.isFavorite,
                             onCheckedChange = { actions.onToggleFavorite(track) },
+                            shapes = IconButtonDefaults.toggleableShapes(),
                             modifier = Modifier.semantics {
                                 stateDescription = if (track.isFavorite) "Favorited" else "Not favorited"
                             },
@@ -178,13 +182,19 @@ fun NowPlayingSupportingPane(
                                 contentDescription = if (track.isFavorite) "Remove from favorites" else "Add to favorites",
                             )
                         }
-                        IconButton(onClick = { actions.onAddToPlaylist(track) }) {
+                        IconButton(
+                            onClick = { actions.onAddToPlaylist(track) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(LumynIcons.PlaylistAdd),
                                 contentDescription = "Add to playlist",
                             )
                         }
-                        IconButton(onClick = { actions.onEditTags(track) }) {
+                        IconButton(
+                            onClick = { actions.onEditTags(track) },
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(LumynIcons.Edit),
                                 contentDescription = "Edit tags",
@@ -229,6 +239,7 @@ fun NowPlayingSupportingPane(
                     durationMs = state.durationMs,
                     enabled = hasTrack,
                     onSeek = actions.onSeek,
+                    isPlaying = state.isPlaying,
                 )
 
                 Row(
@@ -244,6 +255,7 @@ fun NowPlayingSupportingPane(
                     FilledTonalIconButton(
                         onClick = actions.onPrevious,
                         enabled = state.hasPrevious,
+                        shapes = IconButtonDefaults.shapes(),
                         modifier = Modifier.size(48.dp),
                     ) {
                         Icon(
@@ -266,6 +278,7 @@ fun NowPlayingSupportingPane(
                     FilledTonalIconButton(
                         onClick = actions.onNext,
                         enabled = state.hasNext,
+                        shapes = IconButtonDefaults.shapes(),
                         modifier = Modifier.size(48.dp),
                     ) {
                         Icon(

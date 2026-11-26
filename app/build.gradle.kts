@@ -36,8 +36,8 @@ val isReleaseApkBuild = gradle.startParameter.taskNames.any {
 
 android {
     namespace = "com.lumyn.music"
-    compileSdk = 36
-    buildToolsVersion = "36.1.0"
+    compileSdk = 37
+    buildToolsVersion = "37.0.0"
 
     defaultConfig {
         applicationId = "com.lumyn.music"

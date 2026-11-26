@@ -1,6 +1,5 @@
 package com.lumyn.feature.home
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,15 +12,18 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -70,7 +72,7 @@ fun ListeningStatsEntry(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun ListeningStatsScreen(
     stats: ListeningStats,
@@ -168,7 +170,7 @@ fun ListeningStatsScreen(
                         ) {
                             Text("No local listening history yet", style = MaterialTheme.typography.titleMedium)
                             Text(
-                                text = "Listen to tracks in Lumyn and your 100% offline listening insights " +
+                                text = "Listen to tracks in Lumyn and your listening insights " +
                                     "will build up automatically.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -186,22 +188,15 @@ fun ListeningStatsScreen(
                         LumynListGroup(modifier = Modifier.padding(horizontal = 16.dp)) {
                             stats.topArtists.forEachIndexed { index, artist ->
                                 ListItem(
-                                    modifier = Modifier.clickable { onOpenArtist(artist.artistName) },
+                                    onClick = { onOpenArtist(artist.artistName) },
                                     colors = lumynGroupedListItemColors(),
                                     leadingContent = {
                                         LumynArtwork(
                                             artworkUri = artist.artworkUri,
                                             contentDescription = null,
-                                            cornerRadius = 20.dp,
+                                            shape = MaterialShapes.Cookie9Sided.toShape(),
                                             fallbackIcon = LumynIcons.Person,
                                             modifier = Modifier.size(44.dp),
-                                        )
-                                    },
-                                    headlineContent = {
-                                        Text(
-                                            text = "${index + 1}. ${artist.artistName}",
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
                                         )
                                     },
                                     supportingContent = {
@@ -216,11 +211,18 @@ fun ListeningStatsScreen(
                                                     formatListeningHoursMinutes(artist.totalListeningMs),
                                                 style = MaterialTheme.typography.bodySmall,
                                             )
-                                            LinearProgressIndicator(
+                                            LinearWavyProgressIndicator(
                                                 progress = { (artist.playCount.toFloat() / maxArtistPlays).coerceIn(0f, 1f) },
                                                 modifier = Modifier.fillMaxWidth(),
                                             )
                                         }
+                                    },
+                                    content = {
+                                        Text(
+                                            text = "${index + 1}. ${artist.artistName}",
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
                                     },
                                 )
                                 if (index < stats.topArtists.lastIndex) {

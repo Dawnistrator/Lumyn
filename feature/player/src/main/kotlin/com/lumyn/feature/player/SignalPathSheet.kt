@@ -8,17 +8,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.ToggleButton
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -37,14 +38,17 @@ import com.lumyn.core.model.AudioSignalPath
  * Transparent Audio Signal Path sheet: shows Source -> Decoder -> Processing -> Output honestly,
  * and lets the user toggle DSP 32-bit Float vs Purist Bit-Perfect in place.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun SignalPathSheet(
     signalPath: AudioSignalPath?,
     onSelectOutputMode: (AudioOutputMode) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     val currentMode = signalPath?.outputMode ?: AudioOutputMode.DSP_FLOAT_32
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -127,17 +131,24 @@ fun SignalPathSheet(
             }
 
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Audio processing mode", style = MaterialTheme.typography.titleSmall)
+                Text("Audio processing mode", style = MaterialTheme.typography.titleSmallEmphasized)
                 val options = listOf(
                     AudioOutputMode.DSP_FLOAT_32 to "DSP 32-bit float",
                     AudioOutputMode.PURIST_DIRECT_BIT_PERFECT to "Purist bit-perfect",
                 )
-                SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                ) {
                     options.forEachIndexed { index, (option, label) ->
-                        SegmentedButton(
-                            selected = currentMode == option,
-                            onClick = { onSelectOutputMode(option) },
-                            shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                        ToggleButton(
+                            checked = currentMode == option,
+                            onCheckedChange = { if (it) onSelectOutputMode(option) },
+                            shapes = when (index) {
+                                0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                else -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                            },
+                            modifier = Modifier.weight(1f),
                         ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                     }
                 }
@@ -170,8 +181,8 @@ private fun SignalStepRow(
                 modifier = Modifier.size(20.dp),
             )
         },
-        headlineContent = { Text(label, style = MaterialTheme.typography.labelMedium) },
         supportingContent = { Text(value, style = MaterialTheme.typography.bodyMedium) },
+        content = { Text(label, style = MaterialTheme.typography.labelMedium) },
     )
 }
 

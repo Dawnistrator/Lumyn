@@ -19,9 +19,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -343,7 +345,7 @@ fun LibraryDetailScreen(
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun CollectionHeader(
     uiState: LibraryDetailUiState,
@@ -360,7 +362,7 @@ private fun CollectionHeader(
     }
     Surface(
         color = MaterialTheme.colorScheme.surfaceContainer,
-        shape = MaterialTheme.shapes.extraLarge,
+        shape = MaterialTheme.shapes.extraLargeIncreased,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -376,7 +378,7 @@ private fun CollectionHeader(
                 LumynArtwork(
                     artworkUri = uiState.artworkUri,
                     contentDescription = uiState.title,
-                    cornerRadius = 16.dp,
+                    cornerRadius = 18.dp,
                     fallbackIcon = fallbackIcon,
                     fallbackIconSize = 36.dp,
                     modifier = Modifier.size(84.dp),
@@ -387,7 +389,7 @@ private fun CollectionHeader(
                 ) {
                     Text(
                         text = uiState.title,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleLargeEmphasized,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -419,7 +421,7 @@ private fun CollectionHeader(
                             ) {
                                 Text(
                                     text = "Hi-Res",
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelSmallEmphasized,
                                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                                 )
                             }
@@ -433,7 +435,10 @@ private fun CollectionHeader(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    Button(onClick = onPlayAll) {
+                    Button(
+                        onClick = onPlayAll,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(LumynIcons.PlayArrow),
                             contentDescription = null,
@@ -441,7 +446,10 @@ private fun CollectionHeader(
                         )
                         Text("Play all", modifier = Modifier.padding(start = 6.dp))
                     }
-                    FilledTonalButton(onClick = onShuffleAll) {
+                    FilledTonalButton(
+                        onClick = onShuffleAll,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(LumynIcons.Shuffle),
                             contentDescription = null,
@@ -449,7 +457,10 @@ private fun CollectionHeader(
                         )
                         Text("Shuffle", modifier = Modifier.padding(start = 6.dp))
                     }
-                    OutlinedButton(onClick = onQueueAll) {
+                    OutlinedButton(
+                        onClick = onQueueAll,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(LumynIcons.PlaylistAdd),
                             contentDescription = null,

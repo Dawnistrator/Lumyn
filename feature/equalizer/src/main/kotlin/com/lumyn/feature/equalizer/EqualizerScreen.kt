@@ -24,7 +24,10 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroupDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -33,18 +36,17 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -125,7 +127,11 @@ fun EqualizerEntry(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalLayoutApi::class,
+    ExperimentalMaterial3ExpressiveApi::class,
+)
 @Composable
 fun EqualizerScreen(
     uiState: EqualizerUiState,
@@ -218,7 +224,6 @@ fun EqualizerScreen(
                             onValueChange = onEnabledChange,
                         ),
                         colors = lumynGroupedListItemColors(),
-                        headlineContent = { Text("32-bit Float Equalizer") },
                         supportingContent = {
                             Text(
                                 if (settings.enabled) {
@@ -231,6 +236,7 @@ fun EqualizerScreen(
                         trailingContent = {
                             Switch(checked = settings.enabled, onCheckedChange = null)
                         },
+                        content = { Text("32-bit Float Equalizer") },
                     )
                 }
 
@@ -239,7 +245,10 @@ fun EqualizerScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    FilledTonalButton(onClick = onImportAutoEqClick) {
+                    FilledTonalButton(
+                        onClick = onImportAutoEqClick,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
                         Icon(
                             painter = painterResource(LumynIcons.FileOpen),
                             contentDescription = null,
@@ -307,23 +316,33 @@ fun EqualizerScreen(
                 LumynListGroup {
                     ListItem(
                         colors = lumynGroupedListItemColors(),
-                        headlineContent = { Text("Normalization mode") },
                         supportingContent = {
                             val options = listOf(
                                 ReplayGainMode.OFF to "Off",
                                 ReplayGainMode.TRACK to "Track",
                                 ReplayGainMode.ALBUM to "Album",
                             )
-                            SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
+                            ) {
                                 options.forEachIndexed { index, (option, label) ->
-                                    SegmentedButton(
-                                        selected = settings.replayGainMode == option,
-                                        onClick = { onReplayGainModeChange(option) },
-                                        shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                                    ToggleButton(
+                                        checked = settings.replayGainMode == option,
+                                        onCheckedChange = { if (it) onReplayGainModeChange(option) },
+                                        shapes = when (index) {
+                                            0 -> ButtonGroupDefaults.connectedLeadingButtonShapes()
+                                            options.lastIndex -> ButtonGroupDefaults.connectedTrailingButtonShapes()
+                                            else -> ButtonGroupDefaults.connectedMiddleButtonShapes()
+                                        },
+                                        modifier = Modifier.weight(1f),
                                     ) { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) }
                                 }
                             }
                         },
+                        content = { Text("Normalization mode") },
                     )
                     LumynListDivider()
                     DbSliderRow(
@@ -349,9 +368,9 @@ fun EqualizerScreen(
                             onValueChange = onMonoAudioChange,
                         ),
                         colors = lumynGroupedListItemColors(),
-                        headlineContent = { Text("Mono audio") },
                         supportingContent = { Text("Combine left and right channels") },
                         trailingContent = { Switch(checked = settings.monoAudio, onCheckedChange = null) },
+                        content = { Text("Mono audio") },
                     )
                     LumynListDivider()
                     CrossfadeSliderRow(
@@ -405,6 +424,7 @@ private fun StatusBanner(message: String, onDismiss: () -> Unit) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DbSliderRow(
     label: String,
@@ -413,7 +433,13 @@ private fun DbSliderRow(
     enabled: Boolean,
     onValueCommit: (Float) -> Unit,
 ) {
-    var localValue by remember(valueDb) { mutableFloatStateOf(valueDb) }
+    val sliderState = rememberSliderState(
+        value = valueDb.coerceIn(valueRange.start, valueRange.endInclusive),
+        trackRange = valueRange,
+    )
+    LaunchedEffect(valueDb, valueRange) {
+        sliderState.value = valueDb.coerceIn(valueRange.start, valueRange.endInclusive)
+    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -430,15 +456,14 @@ private fun DbSliderRow(
             modifier = Modifier.width(68.dp),
         )
         Slider(
-            value = localValue,
-            onValueChange = { raw -> localValue = (raw * 2f).roundToInt() / 2f },
-            onValueChangeFinished = { onValueCommit(localValue) },
-            valueRange = valueRange,
+            state = sliderState,
+            onValueChange = { raw -> sliderState.value = (raw * 2f).roundToInt() / 2f },
+            onValueChangeFinished = { onValueCommit(sliderState.value) },
             enabled = enabled,
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = formatDbLabel(localValue),
+            text = formatDbLabel(sliderState.value),
             style = MaterialTheme.typography.labelMedium,
             maxLines = 1,
             softWrap = false,
@@ -449,12 +474,19 @@ private fun DbSliderRow(
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun BalanceSliderRow(
     balance: Float,
     onBalanceCommit: (Float) -> Unit,
 ) {
-    var localBalance by remember(balance) { mutableFloatStateOf(balance) }
+    val sliderState = rememberSliderState(
+        value = balance.coerceIn(-1f, 1f),
+        trackRange = -1f..1f,
+    )
+    LaunchedEffect(balance) {
+        sliderState.value = balance.coerceIn(-1f, 1f)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -466,26 +498,34 @@ private fun BalanceSliderRow(
         ) {
             Text("L/R Balance", style = MaterialTheme.typography.bodyLarge)
             Text(
-                text = formatBalanceLabel(localBalance),
+                text = formatBalanceLabel(sliderState.value),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
         }
         Slider(
-            value = localBalance,
-            onValueChange = { raw -> localBalance = ((raw * 20f).roundToInt() / 20f).coerceIn(-1f, 1f) },
-            onValueChangeFinished = { onBalanceCommit(localBalance) },
-            valueRange = -1f..1f,
+            state = sliderState,
+            onValueChange = { raw -> sliderState.value = ((raw * 20f).roundToInt() / 20f).coerceIn(-1f, 1f) },
+            onValueChangeFinished = { onBalanceCommit(sliderState.value) },
         )
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun CrossfadeSliderRow(
     durationSec: Int,
     onDurationCommit: (Int) -> Unit,
 ) {
-    var localSec by remember(durationSec) { mutableFloatStateOf(durationSec.toFloat()) }
+    val maxSec = EqualizerSettings.MAX_CROSSFADE_SEC.toFloat()
+    val sliderState = rememberSliderState(
+        value = durationSec.toFloat().coerceIn(0f, maxSec),
+        steps = EqualizerSettings.MAX_CROSSFADE_SEC - 1,
+        trackRange = 0f..maxSec,
+    )
+    LaunchedEffect(durationSec) {
+        sliderState.value = durationSec.toFloat().coerceIn(0f, maxSec)
+    }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -496,8 +536,9 @@ private fun CrossfadeSliderRow(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             Text("Crossfade / Gapless", style = MaterialTheme.typography.bodyLarge)
+            val roundedSec = sliderState.value.roundToInt()
             Text(
-                text = if (localSec.roundToInt() == 0) "Off (Gapless)" else "${localSec.roundToInt()} s",
+                text = if (roundedSec == 0) "Off (Gapless)" else "$roundedSec s",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -508,11 +549,9 @@ private fun CrossfadeSliderRow(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         Slider(
-            value = localSec,
-            onValueChange = { raw -> localSec = raw.roundToInt().toFloat() },
-            onValueChangeFinished = { onDurationCommit(localSec.roundToInt()) },
-            valueRange = 0f..EqualizerSettings.MAX_CROSSFADE_SEC.toFloat(),
-            steps = EqualizerSettings.MAX_CROSSFADE_SEC - 1,
+            state = sliderState,
+            onValueChange = { raw -> sliderState.value = raw.roundToInt().toFloat() },
+            onValueChangeFinished = { onDurationCommit(sliderState.value.roundToInt()) },
         )
     }
 }

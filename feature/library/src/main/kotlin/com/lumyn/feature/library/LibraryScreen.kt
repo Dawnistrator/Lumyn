@@ -28,14 +28,18 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearWavyProgressIndicator
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialShapes
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,6 +50,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.toShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -178,7 +183,7 @@ fun LibraryEntry(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LibraryScreen(
     audioPermission: AudioPermissionStatus,
@@ -269,7 +274,10 @@ fun LibraryScreen(
                         }
                     }
                     if (audioPermission == AudioPermissionStatus.Granted) {
-                        IconButton(onClick = onScanClick) {
+                        IconButton(
+                            onClick = onScanClick,
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
                             Icon(
                                 painter = painterResource(LumynIcons.Refresh),
                                 contentDescription = "Rescan library",
@@ -282,7 +290,7 @@ fun LibraryScreen(
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(top = innerPadding.calculateTopPadding())) {
             if (uiState.scanStatus is ScanStatus.Scanning) {
-                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             PrimaryScrollableTabRow(selectedTabIndex = selectedTab, edgePadding = 16.dp) {
                 LibraryTabs.forEachIndexed { index, title ->
@@ -484,6 +492,7 @@ private fun AlbumsTab(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ArtistsTab(
     artists: List<ArtistSummary>,
@@ -506,21 +515,21 @@ private fun ArtistsTab(
     ) {
         items(items = artists, key = { it.name }, contentType = { "artist" }) { artist ->
             ListItem(
-                modifier = Modifier.clickable { onOpenArtist(artist.name) },
+                onClick = { onOpenArtist(artist.name) },
                 leadingContent = {
                     LumynArtwork(
                         artworkUri = artist.artworkUri,
                         contentDescription = null,
-                        cornerRadius = 24.dp,
+                        shape = MaterialShapes.Cookie9Sided.toShape(),
                         fallbackIcon = LumynIcons.Person,
                         modifier = Modifier.size(48.dp),
                     )
                 },
-                headlineContent = { Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = {
                     val albumsText = if (artist.albumCount == 1) "1 album" else "${artist.albumCount} albums"
                     Text("$albumsText • ${formatSongCount(artist.trackCount)}")
                 },
+                content = { Text(artist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
     }
@@ -548,10 +557,10 @@ private fun FoldersTab(
     ) {
         items(items = folders, key = { it.path }, contentType = { "folder" }) { folder ->
             ListItem(
-                modifier = Modifier.clickable { onOpenFolder(folder.path) },
+                onClick = { onOpenFolder(folder.path) },
                 leadingContent = {
                     Surface(
-                        shape = MaterialTheme.shapes.small,
+                        shape = MaterialTheme.shapes.medium,
                         color = MaterialTheme.colorScheme.secondaryContainer,
                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                         modifier = Modifier.size(48.dp),
@@ -561,7 +570,6 @@ private fun FoldersTab(
                         }
                     }
                 },
-                headlineContent = { Text(folder.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 supportingContent = { Text(folder.path, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 trailingContent = {
                     Text(
@@ -570,12 +578,13 @@ private fun FoldersTab(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 },
+                content = { Text(folder.displayName, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun PlaylistsTab(
     smartPlaylists: List<SmartPlaylistSummary>,
@@ -664,10 +673,10 @@ private fun PlaylistsTab(
                     SmartPlaylistType.FAVORITES -> LumynIcons.FavoriteFilled
                 }
                 ListItem(
-                    modifier = Modifier.clickable { onOpenSmartPlaylist(sp.type) },
+                    onClick = { onOpenSmartPlaylist(sp.type) },
                     leadingContent = {
                         Surface(
-                            shape = MaterialTheme.shapes.small,
+                            shape = MaterialShapes.Cookie7Sided.toShape(),
                             color = MaterialTheme.colorScheme.tertiaryContainer,
                             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                             modifier = Modifier.size(40.dp),
@@ -681,7 +690,6 @@ private fun PlaylistsTab(
                             }
                         }
                     },
-                    headlineContent = { Text(sp.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text(sp.subtitle, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     trailingContent = {
                         Text(
@@ -690,6 +698,7 @@ private fun PlaylistsTab(
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     },
+                    content = { Text(sp.title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 )
             }
         }
@@ -708,21 +717,26 @@ private fun PlaylistsTab(
         } else {
             items(items = playlists, key = { it.id }, contentType = { "playlist" }) { playlist ->
                 ListItem(
-                    modifier = Modifier.clickable { onOpenPlaylist(playlist) },
+                    onClick = { onOpenPlaylist(playlist) },
                     leadingContent = {
                         Icon(painter = painterResource(LumynIcons.QueueMusic), contentDescription = null)
                     },
-                    headlineContent = { Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     supportingContent = { Text(formatSongCount(playlist.trackCount)) },
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            IconButton(onClick = { onExportClick(playlist) }) {
+                            IconButton(
+                                onClick = { onExportClick(playlist) },
+                                shapes = IconButtonDefaults.shapes(),
+                            ) {
                                 Icon(
                                     painter = painterResource(LumynIcons.Save),
                                     contentDescription = "Export ${playlist.name} to M3U8",
                                 )
                             }
-                            IconButton(onClick = { onDeleteClick(playlist) }) {
+                            IconButton(
+                                onClick = { onDeleteClick(playlist) },
+                                shapes = IconButtonDefaults.shapes(),
+                            ) {
                                 Icon(
                                     painter = painterResource(LumynIcons.Delete),
                                     contentDescription = "Delete ${playlist.name}",
@@ -730,6 +744,7 @@ private fun PlaylistsTab(
                             }
                         }
                     },
+                    content = { Text(playlist.name, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                 )
             }
         }
@@ -765,6 +780,7 @@ private fun CreatePlaylistDialog(
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun LibraryEmptyState(
     tabLabel: String,
@@ -803,7 +819,10 @@ private fun LibraryEmptyState(
             textAlign = TextAlign.Center,
         )
         if (needsPermission) {
-            Button(onClick = onPermissionAction) {
+            Button(
+                onClick = onPermissionAction,
+                shapes = ButtonDefaults.shapes(),
+            ) {
                 Text(
                     if (audioPermission == AudioPermissionStatus.PermanentlyDenied) {
                         "Open settings"
@@ -813,7 +832,10 @@ private fun LibraryEmptyState(
                 )
             }
         } else {
-            OutlinedButton(onClick = onScanClick) {
+            OutlinedButton(
+                onClick = onScanClick,
+                shapes = ButtonDefaults.shapes(),
+            ) {
                 Text("Scan local music")
             }
         }

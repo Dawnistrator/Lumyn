@@ -1,6 +1,5 @@
 package com.lumyn.core.designsystem.component
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,8 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -27,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.lumyn.core.designsystem.icon.LumynIcons
@@ -37,6 +37,7 @@ import com.lumyn.core.model.Track
  * Standard track row placed directly on `surface` (never wrapped in a Card).
  * Uses `secondaryContainer` + bold title + EQ icon together when [isPlaying] is true.
  */
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun TrackListItem(
     track: Track,
@@ -56,36 +57,16 @@ fun TrackListItem(
         MaterialTheme.colorScheme.surface
     }
     ListItem(
-        modifier = modifier.clickable(onClick = onClick),
+        onClick = onClick,
+        modifier = modifier,
         colors = ListItemDefaults.colors(containerColor = containerColor),
         leadingContent = {
             LumynArtwork(
                 artworkUri = track.artworkUri,
                 contentDescription = null,
                 modifier = Modifier.size(48.dp),
-                cornerRadius = 8.dp,
+                cornerRadius = 10.dp,
             )
-        },
-        headlineContent = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                if (isPlaying) {
-                    Icon(
-                        painter = painterResource(LumynIcons.GraphicEq),
-                        contentDescription = "Now playing",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                    )
-                }
-                Text(
-                    text = track.title,
-                    fontWeight = if (isPlaying) FontWeight.SemiBold else FontWeight.Normal,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
         },
         supportingContent = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -106,7 +87,7 @@ fun TrackListItem(
                         ) {
                             Text(
                                 text = "Hi-Res",
-                                style = MaterialTheme.typography.labelSmall,
+                                style = MaterialTheme.typography.labelSmallEmphasized,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 1.dp),
                             )
                         }
@@ -131,6 +112,7 @@ fun TrackListItem(
                 IconToggleButton(
                     checked = track.isFavorite,
                     onCheckedChange = { onToggleFavorite() },
+                    shapes = IconButtonDefaults.toggleableShapes(),
                     modifier = Modifier.semantics {
                         stateDescription = if (track.isFavorite) "Favorited" else "Not favorited"
                     },
@@ -163,9 +145,35 @@ fun TrackListItem(
                 }
             }
         },
+        content = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (isPlaying) {
+                    Icon(
+                        painter = painterResource(LumynIcons.GraphicEq),
+                        contentDescription = "Now playing",
+                        modifier = Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                    )
+                }
+                Text(
+                    text = track.title,
+                    style = if (isPlaying) {
+                        MaterialTheme.typography.titleMediumEmphasized
+                    } else {
+                        MaterialTheme.typography.bodyLarge
+                    },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
     )
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun TrackOverflowButton(
     onPlayNext: (() -> Unit)?,
@@ -176,7 +184,10 @@ private fun TrackOverflowButton(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
-        IconButton(onClick = { expanded = true }) {
+        IconButton(
+            onClick = { expanded = true },
+            shapes = IconButtonDefaults.shapes(),
+        ) {
             Icon(
                 painter = painterResource(LumynIcons.MoreVert),
                 contentDescription = "Track options",
