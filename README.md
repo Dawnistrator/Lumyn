@@ -4,6 +4,7 @@
 
 **A local Hi-Res music player for Android — built for people who own their music.**
 
+[![Release](https://img.shields.io/github/v/release/Dawnistrator/Lumyn?style=flat-square&label=Release&color=1B5E20)](https://github.com/Dawnistrator/Lumyn/releases/latest)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%E2%80%9336)-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Material 3 Expressive](https://img.shields.io/badge/Material%203-Expressive%201.5.0-6750A4?style=flat-square)](https://m3.material.io)
@@ -21,25 +22,40 @@ No accounts, no cloud sync, and zero network permissions. Just your FLAC, WAV, A
 <div align="center">
 <table>
   <tr>
-    <td align="center">
+    <td align="center" valign="top" width="25%">
       <img src="docs/screenshots/home.png" width="190" alt="Lumyn Home and Floating Mini-Player" /><br />
-      <sub><b>Home &amp; Floating Mini-Player</b></sub>
+      <sub><b>Home &amp; Mini-Player</b></sub>
     </td>
-    <td align="center">
+    <td align="center" valign="top" width="25%">
       <img src="docs/screenshots/now-playing.png" width="190" alt="Lumyn Now Playing Screen" /><br />
-      <sub><b>Now Playing &amp; Custom Seekbar</b></sub>
+      <sub><b>Now Playing &amp; Seekbar</b></sub>
     </td>
-    <td align="center">
+    <td align="center" valign="top" width="25%">
       <img src="docs/screenshots/library.png" width="190" alt="Lumyn Library Artists" /><br />
-      <sub><b>Library &amp; Expressive Avatars</b></sub>
+      <sub><b>Library &amp; Artists</b></sub>
     </td>
-    <td align="center">
+    <td align="center" valign="top" width="25%">
       <img src="docs/screenshots/equalizer.png" width="190" alt="Lumyn 10-Band Equalizer and DSP" /><br />
       <sub><b>Equalizer &amp; 32-bit DSP</b></sub>
     </td>
   </tr>
 </table>
 </div>
+
+---
+
+## Download
+
+Grab signed release APKs directly from [**GitHub Releases**](https://github.com/Dawnistrator/Lumyn/releases/latest):
+
+| File | Recommended For |
+| :--- | :--- |
+| `Lumyn-v*-arm64-v8a.apk` | Most modern Android phones (Android 8.0+ 64-bit ARM — smallest download) |
+| `Lumyn-v*-universal.apk` | Any Android device if you are unsure of your CPU architecture |
+| `Lumyn-v*-armeabi-v7a.apk` | Older 32-bit ARM devices |
+| `Lumyn-v*-x86_64.apk` / `Lumyn-v*-x86.apk` | Emulators and x86/x86_64 ChromeOS devices |
+
+You can verify integrity against the attached `SHA256SUMS.txt` on every release.
 
 ---
 
@@ -51,19 +67,19 @@ Instead of slapping "Hi-Res" badges on mystery audio routing, Lumyn exposes the 
 ```mermaid
 flowchart LR
     File["Local Audio — FLAC · WAV · ALAC · MP3"] --> Dec["Decoder — MediaCodec / NextLib FFmpeg"]
-    Dec -->|DSP 32-bit Float| DSP["32-bit Float Pipeline — 10-Band EQ · AutoEQ · ReplayGain · Crossfade"]
+    Dec -->|DSP 32-bit Float| DSP["32-bit Float Pipeline — 10-Band EQ · AutoEQ · ReplayGain · Speed · Crossfade"]
     Dec -->|Purist Mode Android 13+| Direct["Direct PCM / USB DAC — Bit-Perfect Native Rate"]
     DSP --> Out["Speaker · Wired · Bluetooth · USB DAC"]
     Direct --> Out
 ```
 
-- **DSP 32-bit Float Mode:** Real-time RBJ biquad 10-band graphic EQ with AutoEQ parametric `.txt` import, ReplayGain (`REPLAYGAIN_*` & `R128_*`) peak protection, L/R channel balance, mono downmix, soft limiter, and equal-power crossfade.
+- **DSP 32-bit Float Mode:** End-to-end 32-bit float `AudioProcessorChain` featuring real-time 10-band RBJ biquad graphic EQ and presets, AutoEQ parametric `.txt` import, seekable ReplayGain (`REPLAYGAIN_*` & `R128_*` even past large embedded artwork), L/R channel balance, mono downmix, soft limiter, variable playback speed (`0.5x`–`2.0x`), and speed-aware equal-power crossfade.
 - **Direct PCM (Android 13+) & Bit-Perfect USB DAC (Android 14+):** Bypasses the system mixer and hands native sample rate and bit depth directly to your USB-C DAC—plus automatic pause if you unplug it.
 - **Format Coverage:** Platform codecs plus bundled **NextLib FFmpeg (`1.11.1-0.19.0`)** so FLAC works smoothly down to Android 8.0 Oreo alongside ALAC, APE, WavPack, and WMA.
 
 ### 2. Material 3 Expressive Craft
 - Built on **Material 3 `1.5.0` (`Compose BOM 2026.11.01`)** with `MaterialExpressiveTheme`, spring-driven `MotionScheme.expressive()`, and bundled offline **JetBrains Mono** typography across regular and emphasized scales.
-- **Adaptive Artwork Now Playing:** Dynamic color extraction samples the active album cover for both the full player and the floating pill mini-player. Includes a custom wavy `Canvas` audio seekbar while playing, smooth marquee titles, and morphing play/pause controls.
+- **Adaptive Artwork Now Playing:** Dynamic color extraction samples the active album cover for both the full player and the floating pill mini-player. Includes a custom wavy `Canvas` audio seekbar while playing, smooth marquee titles, a symmetrical Audio Signal Path + Favorite action row, and morphing play/pause controls.
 - **Tactile Visual Accents:** `MaterialShapes` (`SoftBurst`, `Cookie7Sided`, `Cookie9Sided`), wavy progress indicators during scans and listening breakdowns, connected `ToggleButton` groups, and responsive layouts across phones, foldables, and tablets.
 
 ### 3. Built for Real Local Libraries
@@ -76,7 +92,7 @@ flowchart LR
 Lumyn declares **zero `INTERNET` or `ACCESS_NETWORK_STATE` permissions** in both debug and release manifests. You can verify this directly on any compiled APK:
 
 ```bash
-aapt2 dump permissions app/build/outputs/apk/release/app-release.apk
+aapt2 dump permissions app/build/outputs/apk/release/app-arm64-v8a-release.apk
 ```
 
 ---
@@ -90,7 +106,7 @@ aapt2 dump permissions app/build/outputs/apk/release/app-release.apk
 | `:core:designsystem` | Bundled JetBrains Mono typography, `MaterialExpressiveTheme`, color extraction, shared components & icons |
 | `:core:database` | Room database (`v3` with `MIGRATION_2_3`), DAOs, DataStore preferences & persisted playback queue |
 | `:core:media-scanner` | MediaStore scanner/observer, binary header & ReplayGain parser, in-file tag writer, lyrics loader |
-| `:core:audio-engine` | `LumynPlaybackService`, `LumynDspAudioProcessor`, RBJ biquad DSP, crossfade, USB DAC routing |
+| `:core:audio-engine` | `LumynPlaybackService`, `LumynAudioProcessorChain`, `LumynDspConfigStore`, `LumynDspAudioProcessor`, RBJ biquad DSP, 32-bit float `SonicAudioProcessor` playback speed, crossfade, USB DAC routing |
 | `:feature:home` | Home hero card, Smart Playlists strip, Album Spotlight carousel, local Listening Stats |
 | `:feature:library` | Songs, Albums, Artists, Folders, Playlists tabs + `LibraryDetailScreen` |
 | `:feature:player` | Now Playing screen & supporting pane, floating mini-player, Queue, Signal Path, Lyrics & Tag Editor sheets |
@@ -103,7 +119,7 @@ aapt2 dump permissions app/build/outputs/apk/release/app-release.apk
 ## Tech Stack
 
 - **SDK & Build:** `minSdk = 26` (Android 8.0 Oreo), `compileSdk = 37`, `targetSdk = 36` · AGP `9.1.1` · Gradle `9.3.1` · Kotlin `2.4.21` · JDK 17+
-- **UI:** Jetpack Compose (`BOM 2026.11.01`, Material 3 `1.5.0`, Adaptive `1.3.0`), Coil `3.4.0`, Glance `1.2.0`
+- **UI:** Jetpack Compose (`BOM 2026.11.01`, Material 3 `1.5.0`, Adaptive `1.2.0`), Coil `3.4.0`, Glance `1.2.0`
 - **Audio & Storage:** Jetpack Media3 `1.11.1`, NextLib FFmpeg extension `1.11.1-0.19.0`, Room `2.8.5`, DataStore `1.3.0`, Hilt `2.60.1`
 
 ---
@@ -133,3 +149,10 @@ For CI builds without a local `keystore.properties`, set `LUMYN_KEYSTORE_PATH`, 
 # Signed Play Store App Bundle under app/build/outputs/bundle/release/app-release.aab
 ./gradlew bundleRelease
 ```
+
+### Automated GitHub Releases
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs unit tests, builds & verifies signed release APKs (`apksigner verify` + `aapt2 dump permissions`), generates `SHA256SUMS.txt`, and publishes a GitHub Release automatically whenever you push a `v*` tag (or trigger **workflow_dispatch** from the Actions tab) with these four repository secrets configured:
+- `LUMYN_KEYSTORE_BASE64`
+- `LUMYN_KEYSTORE_PASSWORD`
+- `LUMYN_KEY_ALIAS`
+- `LUMYN_KEY_PASSWORD`
