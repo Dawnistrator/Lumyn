@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Five audio-level bars on a curve: the Lumyn mark. Kept inside the 66dp adaptive-icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="@color/lumyn_icon_foreground"
+        android:pathData="M30,48h6v12h-6zM40,40h6v28h-6zM51,32h6v44h-6zM62,40h6v28h-6zM72,48h6v12h-6z" />
+</vector>

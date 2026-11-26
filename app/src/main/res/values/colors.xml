@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="lumyn_window_background">#FFF5FAFC</color>
+    <color name="lumyn_icon_background">#FF0E6178</color>
+    <color name="lumyn_icon_foreground">#FFF5FAFC</color>
+</resources>

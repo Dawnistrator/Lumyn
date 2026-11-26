@@ -1,0 +1,36 @@
+# Gradle / Kotlin
+.gradle/
+.kotlin/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Local machine config & agent workspace
+local.properties
+.agents/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+.DS_Store
+
+# Native build
+.cxx/
+.externalNativeBuild/
+
+# Artifacts, logs & signing secrets
+*.apk
+*.aab
+*.ap_
+*.dex
+*.keystore
+*.jks
+*.p12
+*.pem
+*.orig
+*.log
+keystore/
+keystore.properties
+captures/
+*.hprof
