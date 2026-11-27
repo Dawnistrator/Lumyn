@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Windows release tag (e.g. win-0.1.0 or win-v1.0.0)"
+        description: "Windows release tag (e.g. win-v1.0.0)"
         required: true
         type: string
 
@@ -87,7 +87,7 @@ jobs:
           $ErrorActionPreference = "Stop"
           $rawTag = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { $env:GITHUB_REF_NAME }
           $verNum = $rawTag -replace '^win-v?|^v', ''
-          if (-not $verNum) { $verNum = "0.1.0" }
+          if (-not $verNum) { $verNum = "1.0.0" }
 
           New-Item -ItemType Directory -Force -Path "release-assets" | Out-Null
           New-Item -ItemType Directory -Force -Path "portable-stage" | Out-Null
@@ -101,7 +101,24 @@ jobs:
 
           $setupOut = (Resolve-Path "release-assets").Path + "\Lunaria-v$verNum-windows-x64-setup.exe"
           $exeAbs = (Resolve-Path "target\release\lunaria-desktop.exe").Path
-          makensis "/DVERSION=$verNum" "/DOUT_FILE=$setupOut" "/DEXE_SOURCE=$exeAbs" "packaging\windows\lunaria-installer.nsi"
+
+          $makensisCmd = Get-Command makensis -ErrorAction SilentlyContinue
+          $makensisPath = if ($makensisCmd) {
+            $makensisCmd.Source
+          } elseif (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe") {
+            "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+          } elseif (Test-Path "$env:ProgramFiles\NSIS\makensis.exe") {
+            "$env:ProgramFiles\NSIS\makensis.exe"
+          } else {
+            choco install nsis -y --no-progress
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe") {
+              "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+            } else {
+              (Get-Command makensis -ErrorAction Stop).Source
+            }
+          }
+          & $makensisPath "/DVERSION=$verNum" "/DOUT_FILE=$setupOut" "/DEXE_SOURCE=$exeAbs" "packaging\windows\lunaria-installer.nsi"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
           $hashes = Get-ChildItem "release-assets\*" -File | ForEach-Object {

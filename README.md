@@ -191,7 +191,7 @@ cargo bench -p lunaria-dsp -- --test
 cargo build --release -p lunaria-desktop
 ```
 
-Tagging a commit with `win-*` (for example `win-0.1.0`) triggers [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) to build and publish `Lunaria-v*-windows-x64-setup.exe` ([`lunaria-installer.nsi`](desktop/packaging/windows/lunaria-installer.nsi)), `Lunaria-v*-windows-x64-portable.zip`, and `SHA256SUMS.txt`.
+Tagging a commit with `win-*` (for example `win-v1.0.0`) triggers [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) to build and publish `Lunaria-v*-windows-x64-setup.exe` ([`lunaria-installer.nsi`](desktop/packaging/windows/lunaria-installer.nsi)), `Lunaria-v*-windows-x64-portable.zip`, and `SHA256SUMS.txt`.
 
 ### Website
 Run from `website/`:

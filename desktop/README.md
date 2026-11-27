@@ -78,5 +78,5 @@ cargo run -p lunaria-desktop -- --probe-wasapi
 ## Installer & Automated CI Releases
 
 - **NSIS Per-User Installer:** [`packaging/windows/lunaria-installer.nsi`](packaging/windows/lunaria-installer.nsi) installs into `%LOCALAPPDATA%\Programs\Lunaria` without UAC elevation, creates Start Menu/Desktop shortcuts, registers `HKCU` `OpenWithProgids` audio/playlist associations (`.flac`, `.wav`, `.alac`, `.mp3`, `.m4a`, `.aac`, `.ogg`, `.aiff`, `.aif`, `.cue`, `.m3u`, `.m3u8`), and includes an uninstaller.
-- **GitHub Actions CI:** [`../.github/workflows/release-windows.yml`](../.github/workflows/release-windows.yml) builds `x86_64-pc-windows-msvc` on `win-*` tags (e.g. `win-0.1.0`) or manual `workflow_dispatch`, verifies zero-network/Clippy/tests/bench, and publishes the NSIS Setup EXE, Portable ZIP, and `SHA256SUMS.txt`.
+- **GitHub Actions CI:** [`../.github/workflows/release-windows.yml`](../.github/workflows/release-windows.yml) builds `x86_64-pc-windows-msvc` on `win-*` tags (e.g. `win-v1.0.0`) or manual `workflow_dispatch`, verifies zero-network/Clippy/tests/bench, and publishes the NSIS Setup EXE, Portable ZIP, and `SHA256SUMS.txt`.
 - **License:** Distributed under the **GNU General Public License v3.0 (`GPL-3.0-only`)** — see [`../LICENSE`](../LICENSE), aligned with Slint 1.19's `GPL-3.0-only` license.

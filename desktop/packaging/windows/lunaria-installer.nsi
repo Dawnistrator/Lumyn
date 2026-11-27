@@ -6,7 +6,7 @@ Unicode True
 !include "MUI2.nsh"
 
 !ifndef VERSION
-  !define VERSION "0.1.0"
+  !define VERSION "1.0.0"
 !endif
 !ifndef OUT_FILE
   !define OUT_FILE "Lunaria-windows-x64-setup.exe"
