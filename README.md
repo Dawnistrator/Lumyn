@@ -2,7 +2,7 @@
 
 # LUNARIA
 
-**A local Hi-Res music player for Android — built for people who own their music.**
+**A local Hi-Res music player for Androi * built for people who own their music.**
 
 [![Release](https://img.shields.io/github/v/release/Dawnistrator/Lunaria?style=flat-square&label=Release&color=1B5E20)](https://github.com/Dawnistrator/Lunaria/releases/latest)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%E2%80%9336)-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
