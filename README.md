@@ -4,7 +4,7 @@
 
 # LUNARIA
 
-**Offline Hi-Res music player for Android & Windows — built for people who own their music.**
+**Offline Hi-Res music player for Android & Windows * built for people who own their music.**
 
 [**Website (`lunarias.vercel.app`)**](https://lunarias.vercel.app) · [**Download Releases**](https://github.com/Dawnistrator/Lunaria/releases) · [**Windows Blueprint**](docs/WINDOWS_BLUEPRINT.md)
 
