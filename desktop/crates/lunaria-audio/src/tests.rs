@@ -20,7 +20,13 @@ use crate::engine::{PlaybackEngine, PlaybackRequest, PlaybackStatus};
 use crate::resampler::AudioResampler;
 use crate::signal_path::{SignalPathInput, build_preview_signal_path, build_signal_path};
 use crate::time_stretch::WsolaTimeStretcher;
-use crate::{WasapiEncoding, classify_device_category, pack_frames_to_pcm_bytes};
+use crate::{
+    WasapiEncoding, classify_device_category, enumerate_render_devices, pack_frames_to_pcm_bytes,
+};
+
+fn has_wasapi_render_endpoint() -> bool {
+    enumerate_render_devices().is_ok_and(|devices| !devices.is_empty())
+}
 
 static NEXT_TEST_FILE_ID: AtomicU64 = AtomicU64::new(1);
 
@@ -157,7 +163,7 @@ fn preview_signal_path_never_claims_bluetooth_is_bit_perfect() {
 fn enumerate_devices_works_from_sta_ui_thread() {
     let handle = std::thread::spawn(|| {
         let hr = wasapi::initialize_sta();
-        let devices = crate::enumerate_render_devices();
+        let devices = enumerate_render_devices();
         if hr.is_ok() {
             wasapi::deinitialize();
         }
@@ -531,6 +537,9 @@ fn pcm_packer_encodes_all_formats_and_maps_stereo_to_8ch() {
 
 #[test]
 fn playback_engine_advances_queued_next_when_crossfade_preopened_before_eof() {
+    if !has_wasapi_render_endpoint() {
+        return;
+    }
     let first = write_test_wav("xfade_a", 44_100, 16, 2, 0.9, 440.0);
     let second = write_test_wav("xfade_b", 44_100, 16, 2, 0.8, 880.0);
 
@@ -577,6 +586,9 @@ fn playback_engine_advances_queued_next_when_crossfade_preopened_before_eof() {
 
 #[test]
 fn playback_engine_lifecycle_and_file_lock_handover() {
+    if !has_wasapi_render_endpoint() {
+        return;
+    }
     let wav = write_test_wav("engine_handover", 48_000, 16, 2, 1.5, 440.0);
     let dsp_store = Arc::new(DspConfigStore::new());
     let engine = PlaybackEngine::new(dsp_store);

@@ -10,7 +10,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use image::{DynamicImage, ImageBuffer, ImageFormat, Rgb};
-use lunaria_audio::{PlaybackEngine, PlaybackRequest, PlaybackStatus};
+use lunaria_audio::{PlaybackEngine, PlaybackRequest, PlaybackStatus, enumerate_render_devices};
 use lunaria_db::LibraryDb;
 use lunaria_dsp::DspConfigStore;
 use lunaria_model::{SearchCriteria, TrackId};
@@ -149,6 +149,7 @@ fn windows_file_lock_handover_suspends_live_playback_writes_tags_and_resumes() -
     )?;
     let track = db.list_tracks(lunaria_model::TrackSortOrder::TitleAsc)?[0].clone();
 
+    let has_audio_device = enumerate_render_devices().is_ok_and(|d| !d.is_empty());
     let dsp_store = Arc::new(DspConfigStore::new());
     let engine = PlaybackEngine::new(dsp_store)?;
     // Mute engine so CI/local test runs produce zero audible tone.
@@ -176,7 +177,9 @@ fn windows_file_lock_handover_suspends_live_playback_writes_tags_and_resumes() -
     // Give playback thread a short moment after resume.
     std::thread::sleep(Duration::from_millis(80));
     let telemetry = engine.telemetry();
-    assert_ne!(telemetry.status, PlaybackStatus::Error);
+    if has_audio_device {
+        assert_ne!(telemetry.status, PlaybackStatus::Error);
+    }
     engine.stop()?;
 
     let updated = db
