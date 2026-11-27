@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.feature.player"
+    namespace = "com.lunaria.feature.player"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

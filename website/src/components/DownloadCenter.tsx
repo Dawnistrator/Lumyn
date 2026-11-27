@@ -1,40 +1,58 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ArrowsClockwise,
   ArrowUpRight,
   Check,
   Copy,
   DownloadSimple,
+  Monitor,
   WarningCircle,
 } from "@phosphor-icons/react";
 import { useAppPreferences } from "@/components/Providers";
 import {
   GITHUB_RELEASES_URL,
   type ApkAsset,
+  type DesktopReleaseInfo,
   type ReleaseInfo,
   type ReleaseResult,
 } from "@/lib/releases";
 
 interface DownloadCenterProps {
   initialRelease: ReleaseInfo;
+  initialWindowsRelease?: DesktopReleaseInfo | null;
   initialSource: "github" | "fallback";
 }
 
 export function DownloadCenter({
   initialRelease,
+  initialWindowsRelease = null,
   initialSource,
 }: DownloadCenterProps) {
   const { locale, copy } = useAppPreferences();
   const [release, setRelease] = useState<ReleaseInfo>(initialRelease);
+  const [windowsRelease, setWindowsRelease] = useState<DesktopReleaseInfo | null>(
+    initialWindowsRelease,
+  );
   const [source, setSource] = useState<"github" | "fallback">(initialSource);
   const [selectedAbi, setSelectedAbi] = useState<string>(
     initialRelease.assets[0]?.abi ?? "arm64-v8a",
   );
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [copiedSha, setCopiedSha] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
+  const copyTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimerRef.current !== null) {
+        window.clearTimeout(copyTimerRef.current);
+      }
+    };
+  }, []);
 
   const selectedAsset: ApkAsset | undefined =
     release.assets.find((item) => item.abi === selectedAbi) ?? release.assets[0];
@@ -49,6 +67,7 @@ export function DownloadCenter({
       }
       const data = (await response.json()) as ReleaseResult;
       setRelease(data.release);
+      setWindowsRelease(data.windowsRelease ?? null);
       setSource(data.source);
       if (data.source === "fallback") {
         setErrorMessage(copy.download.retryHint);
@@ -66,14 +85,48 @@ export function DownloadCenter({
 
   const handleCopySha = async () => {
     if (!selectedAsset?.sha256) return;
+    if (copyTimerRef.current !== null) {
+      window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = null;
+    }
     try {
       await navigator.clipboard.writeText(selectedAsset.sha256);
-      setCopiedSha(true);
-      window.setTimeout(() => setCopiedSha(false), 2200);
+      setCopyStatus("copied");
+      copyTimerRef.current = window.setTimeout(() => setCopyStatus("idle"), 2200);
     } catch {
-      setCopiedSha(false);
+      setCopyStatus("failed");
+      copyTimerRef.current = window.setTimeout(() => setCopyStatus("idle"), 3000);
     }
   };
+
+  const handleAbiKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    const assets = release.assets;
+    if (assets.length === 0) return;
+    let nextIdx: number | null = null;
+    if (event.key === "ArrowRight") {
+      nextIdx = (idx + 1) % assets.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIdx = (idx - 1 + assets.length) % assets.length;
+    } else if (event.key === "Home") {
+      nextIdx = 0;
+    } else if (event.key === "End") {
+      nextIdx = assets.length - 1;
+    }
+    if (nextIdx === null) return;
+    event.preventDefault();
+    const targetAsset = assets[nextIdx];
+    if (!targetAsset) return;
+    setSelectedAbi(targetAsset.abi);
+    setCopyStatus("idle");
+    tabRefs.current[nextIdx]?.focus();
+  };
+
+  const copyStatusAnnouncement =
+    copyStatus === "copied"
+      ? copy.download.copiedSha
+      : copyStatus === "failed"
+        ? copy.download.copyFailed
+        : "";
 
   return (
     <section
@@ -116,7 +169,7 @@ export function DownloadCenter({
         {errorMessage && (
           <div
             role="status"
-            className="lumyn-raised mt-6 flex items-center gap-2.5 rounded-2xl p-4 text-[var(--text-secondary)]"
+            className="lunaria-raised mt-6 flex items-center gap-2.5 rounded-2xl p-4 text-[var(--text-secondary)]"
           >
             <WarningCircle
               size={18}
@@ -127,7 +180,7 @@ export function DownloadCenter({
           </div>
         )}
 
-        <div className="lumyn-card mt-8 rounded-2xl p-4 sm:p-6">
+        <div className="lunaria-card mt-8 rounded-2xl p-4 sm:p-6" aria-busy={isLoading}>
           <p className="body-5 text-[var(--text-muted)]">{copy.download.archLabel}</p>
 
           {isLoading ? (
@@ -139,13 +192,13 @@ export function DownloadCenter({
                 {["arm64", "univ", "arm32", "x64", "x86"].map((slot) => (
                   <div
                     key={slot}
-                    className="h-12 rounded-xl opacity-60 lumyn-raised"
+                    className="h-12 rounded-xl opacity-60 lunaria-raised"
                   />
                 ))}
               </div>
             </div>
           ) : release.assets.length === 0 ? (
-            <div className="mt-4 rounded-xl p-6 lumyn-raised">
+            <div className="mt-4 rounded-xl p-6 lunaria-raised">
               <p className="body-3 text-[var(--text-secondary)]">
                 {copy.download.emptyState}
               </p>
@@ -157,18 +210,25 @@ export function DownloadCenter({
                 aria-label={copy.download.archLabel}
                 className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5"
               >
-                {release.assets.map((asset) => {
+                {release.assets.map((asset, idx) => {
                   const selected = selectedAsset?.abi === asset.abi;
                   return (
                     <button
                       key={asset.abi}
+                      ref={(el) => {
+                        tabRefs.current[idx] = el;
+                      }}
+                      id={`abi-tab-${asset.abi}`}
                       type="button"
                       role="tab"
                       aria-selected={selected}
+                      aria-controls="apk-asset-panel"
+                      tabIndex={selected ? 0 : -1}
                       onClick={() => {
                         setSelectedAbi(asset.abi);
-                        setCopiedSha(false);
+                        setCopyStatus("idle");
                       }}
+                      onKeyDown={(e) => handleAbiKeyDown(e, idx)}
                       className="flex min-h-12 min-w-0 flex-col items-start justify-center rounded-xl px-3.5 py-2.5 text-left transition-colors duration-200"
                       style={{
                         backgroundColor: selected
@@ -177,7 +237,7 @@ export function DownloadCenter({
                         color: selected ? "var(--on-accent)" : "var(--text-primary)",
                         border: selected
                           ? "1px solid var(--accent-fill)"
-                          : "1px solid var(--hairline)",
+                          : "1px solid var(--ui-border)",
                       }}
                     >
                       <div className="flex w-full flex-wrap items-center justify-between gap-x-2 gap-y-1">
@@ -214,7 +274,13 @@ export function DownloadCenter({
               </div>
 
               {selectedAsset && (
-                <div className="mt-6 grid gap-6 pt-6 lg:grid-cols-12 lg:items-center" style={{ borderTop: "1px solid var(--hairline)" }}>
+                <div
+                  id="apk-asset-panel"
+                  role="tabpanel"
+                  aria-labelledby={`abi-tab-${selectedAsset.abi}`}
+                  className="mt-6 grid gap-6 pt-6 lg:grid-cols-12 lg:items-center"
+                  style={{ borderTop: "1px solid var(--hairline)" }}
+                >
                   <div className="min-w-0 lg:col-span-8">
                     <div className="grid grid-cols-2 gap-4 sm:grid-cols-[auto_auto_minmax(0,1fr)] sm:gap-x-8">
                       <div>
@@ -252,7 +318,7 @@ export function DownloadCenter({
                         <div className="caption-4 text-[var(--text-muted)]">
                           {copy.download.shaLabel}
                         </div>
-                        <div className="lumyn-raised mt-1.5 flex flex-col gap-2 rounded-xl p-2.5 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="lunaria-raised mt-1.5 flex flex-col gap-2 rounded-xl p-2.5 sm:flex-row sm:items-center sm:justify-between">
                           <div
                             tabIndex={0}
                             role="region"
@@ -266,10 +332,9 @@ export function DownloadCenter({
                           <button
                             type="button"
                             onClick={handleCopySha}
-                            aria-live="polite"
                             className="btn-secondary caption-4 inline-flex min-h-11 w-full shrink-0 items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 sm:w-auto"
                           >
-                            {copiedSha ? (
+                            {copyStatus === "copied" ? (
                               <Check
                                 size={15}
                                 aria-hidden="true"
@@ -279,9 +344,16 @@ export function DownloadCenter({
                               <Copy size={15} aria-hidden="true" />
                             )}
                             <span>
-                              {copiedSha ? copy.download.copiedSha : copy.download.copySha}
+                              {copyStatus === "copied"
+                                ? copy.download.copiedSha
+                                : copyStatus === "failed"
+                                  ? copy.download.copyFailed
+                                  : copy.download.copySha}
                             </span>
                           </button>
+                          <span role="status" aria-live="polite" className="sr-only">
+                            {copyStatusAnnouncement}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -314,6 +386,69 @@ export function DownloadCenter({
               )}
             </>
           )}
+        </div>
+
+        {/* Lunaria Desktop for Windows x64 */}
+        <div className="lunaria-card mt-6 rounded-2xl p-4 sm:p-6">
+          <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-center">
+            <div className="min-w-0 max-w-[680px]">
+              <div className="flex flex-wrap items-center gap-2.5">
+                <Monitor size={18} aria-hidden="true" className="text-[var(--accent)]" />
+                <span className="caption-4 mono-tabular rounded-lg px-2.5 py-1 text-[var(--text-secondary)] lunaria-raised">
+                  {copy.download.windows.badge}
+                </span>
+                {windowsRelease && (
+                  <span className="caption-4 mono-tabular text-[var(--accent)]">
+                    {windowsRelease.tagName}
+                  </span>
+                )}
+              </div>
+              <h3 className="heading-5 mt-3 text-[var(--text-primary)]">
+                {copy.download.windows.heading}
+              </h3>
+              <p className="body-3 mt-2 text-[var(--text-secondary)]">
+                {windowsRelease
+                  ? copy.download.windows.description
+                  : `${copy.download.windows.description} ${copy.download.windows.comingSoonNote}`}
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap lg:shrink-0 lg:justify-end">
+              {windowsRelease ? (
+                windowsRelease.assets.map((asset) => (
+                  <a
+                    key={asset.fileName}
+                    href={asset.downloadUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={
+                      asset.kind === "installer"
+                        ? "btn-primary button-md inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-center no-underline sm:w-auto"
+                        : "btn-secondary button-sm inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-center no-underline sm:w-auto"
+                    }
+                  >
+                    <DownloadSimple size={17} aria-hidden="true" />
+                    <span>
+                      {asset.kind === "installer"
+                        ? copy.download.windows.installerLabel
+                        : copy.download.windows.portableLabel}{" "}
+                      ({asset.sizeFormatted})
+                    </span>
+                  </a>
+                ))
+              ) : (
+                <a
+                  href={GITHUB_RELEASES_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-secondary button-sm inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 py-2 text-center no-underline sm:w-auto"
+                >
+                  <span>{copy.download.windows.buildFromSourceCta}</span>
+                  <ArrowUpRight size={16} aria-hidden="true" />
+                </a>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </section>

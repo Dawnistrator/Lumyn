@@ -1,0 +1,1513 @@
+// Center Workspace Views: Home, Library (5 Tabs), Search (Ctrl+K), Equalizer (Bode Curve), Stats, Settings.
+
+import { ListView } from "std-widgets.slint";
+import { LunariaTheme } from "./theme.slint";
+import {
+    DeviceRow, EqBandRow, GroupRow, SmartPlaylistRow, StatArtistRow, SwatchRow, TrackRow,
+    WatchedFolderRow,
+} from "./types.slint";
+import {
+    LunariaScrollBar, LunariaTextField, PresetChip, TonalActionButton, TrackListRow,
+    VerticalEqMixerFader,
+} from "./widgets.slint";
+
+export component HomeView inherits VerticalLayout {
+    in property <string> library-summary: "0 tracks • 0 albums • 0 lossless";
+    in property <bool> scan-busy: false;
+    in property <bool> has-resume: false;
+    in property <string> resume-title: "";
+    in property <string> resume-subtitle: "";
+    in property <[SmartPlaylistRow]> smart-playlists: [];
+    in property <[TrackRow]> spotlight-tracks: [];
+
+    callback add-folder();
+    callback rescan-library();
+    callback resume-session();
+    callback open-smart-playlist(int);
+    callback play-spotlight-track(int);
+    callback favorite-spotlight-track(int);
+    callback queue-spotlight-track(int);
+    callback edit-spotlight-tags(int);
+
+    spacing: 10px;
+
+    HorizontalLayout {
+        spacing: 10px;
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 2px;
+            Text {
+                text: "Home & Smart Playlists";
+                font-size: 16px;
+                font-weight: 700;
+                color: LunariaTheme.on-surface;
+                overflow: elide;
+            }
+            Text {
+                text: root.library-summary;
+                font-size: 10px;
+                font-weight: 500;
+                color: LunariaTheme.on-surface-variant;
+                overflow: elide;
+            }
+        }
+        TonalActionButton {
+            label: "+ Folder";
+            width: 82px;
+            clicked => { root.add-folder(); }
+        }
+        TonalActionButton {
+            label: root.scan-busy ? "Scanning..." : "Rescan";
+            filled: true;
+            busy: root.scan-busy;
+            width: 84px;
+            clicked => { root.rescan-library(); }
+        }
+    }
+
+    if root.has-resume: Rectangle {
+        height: 46px;
+        border-radius: 12px;
+        background: LunariaTheme.primary-container;
+        clip: true;
+
+        HorizontalLayout {
+            padding-left: 12px;
+            padding-right: 10px;
+            spacing: 10px;
+            VerticalLayout {
+                horizontal-stretch: 1;
+                alignment: center;
+                spacing: 1px;
+                Text {
+                    text: "Resume: " + root.resume-title;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: LunariaTheme.on-primary-container;
+                    overflow: elide;
+                }
+                Text {
+                    text: root.resume-subtitle;
+                    font-size: 9px;
+                    color: LunariaTheme.on-primary-container;
+                    opacity: 0.85;
+                    overflow: elide;
+                }
+            }
+            TonalActionButton {
+                label: "Resume";
+                width: 76px;
+                y: (parent.height - self.height) / 2;
+                clicked => { root.resume-session(); }
+            }
+        }
+    }
+
+    // 5 Built-In Offline Smart Playlists
+    HorizontalLayout {
+        spacing: 6px;
+        if root.smart-playlists.length == 0: Rectangle {
+            horizontal-stretch: 1;
+            height: 68px;
+        }
+        for sp[idx] in root.smart-playlists: Rectangle {
+            horizontal-stretch: 1;
+            height: 68px;
+            border-radius: 12px;
+            background: sp-ta.has-hover ? LunariaTheme.surface-container-high : LunariaTheme.surface-container-low;
+            border-width: 1px;
+            border-color: sp-ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline-variant;
+            animate background, border-color { duration: 130ms; }
+            clip: true;
+            accessible-role: button;
+            accessible-label: sp.title + ", " + sp.count-text;
+            accessible-action-default => { root.open-smart-playlist(idx); }
+
+            VerticalLayout {
+                padding: 8px;
+                spacing: 3px;
+                Text {
+                    text: sp.title;
+                    accessible-role: none;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: LunariaTheme.on-surface;
+                    overflow: elide;
+                }
+                Text {
+                    text: sp.count-text;
+                    accessible-role: none;
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: LunariaTheme.primary;
+                    overflow: elide;
+                }
+                Text {
+                    text: sp.subtitle;
+                    accessible-role: none;
+                    font-size: 9px;
+                    font-weight: 500;
+                    color: LunariaTheme.on-surface-variant;
+                    overflow: elide;
+                }
+            }
+
+            sp-ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => { root.open-smart-playlist(idx); }
+            }
+        }
+    }
+
+    Text {
+        text: "Hi-Res & Recently Indexed Spotlight";
+        font-size: 12px;
+        font-weight: 700;
+        color: LunariaTheme.on-surface;
+    }
+
+    if root.spotlight-tracks.length == 0: Rectangle {
+        vertical-stretch: 1;
+        border-radius: 14px;
+        background: LunariaTheme.surface-container-low;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        VerticalLayout {
+            alignment: center;
+            spacing: 8px;
+            Text {
+                text: "Your offline library is ready for local lossless music.";
+                font-size: 11px;
+                font-weight: 600;
+                color: LunariaTheme.on-surface;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Click '+ Folder' to index FLAC, WAV, ALAC, MP3, OGG, AAC, AIFF, and .cue sheets.";
+                font-size: 10px;
+                color: LunariaTheme.on-surface-variant;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+    }
+
+    if root.spotlight-tracks.length > 0: Rectangle {
+        vertical-stretch: 1;
+        clip: true;
+
+        lv-spotlight := ListView {
+            x: 0px;
+            y: 0px;
+            width: parent.width - 10px;
+            height: parent.height;
+            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+            for item[idx] in root.spotlight-tracks: TrackListRow {
+                track: item;
+                play-clicked => { root.play-spotlight-track(idx); }
+                favorite-clicked => { root.favorite-spotlight-track(idx); }
+                queue-next-clicked => { root.queue-spotlight-track(idx); }
+                edit-tags-clicked => { root.edit-spotlight-tags(idx); }
+            }
+        }
+
+        LunariaScrollBar {
+            x: parent.width - 8px;
+            y: 2px;
+            height: parent.height - 4px;
+            viewport-height: lv-spotlight.visible-height;
+            content-height: lv-spotlight.content-height;
+            content-y <=> lv-spotlight.content-y;
+        }
+    }
+}
+
+export component LibraryView inherits VerticalLayout {
+    in-out property <int> active-subtab: 0; // 0 Songs, 1 Albums, 2 Artists, 3 Folders, 4 Playlists
+    in property <bool> in-drilldown: false;
+    in property <string> drilldown-title: "";
+    in property <bool> in-playlist-drilldown: false;
+    in property <string> sort-label: "Sort: Title";
+    in property <bool> show-playlist-add-btn: false;
+    in property <bool> scan-busy: false;
+    in-out property <string> new-playlist-name: "";
+
+    in property <[TrackRow]> track-rows: [];
+    in property <[GroupRow]> group-rows: [];
+    private property <bool> delete-confirm: false;
+
+    callback select-subtab(int);
+    callback cycle-sort();
+    callback play-all();
+    callback shuffle-all();
+    callback rescan-library();
+    callback exit-drilldown();
+    callback open-group(int);
+    callback play-track(int);
+    callback favorite-track(int);
+    callback queue-next-track(int);
+    callback add-track-to-playlist(int);
+    callback edit-track-tags(int);
+    callback create-playlist(string);
+    callback delete-current-playlist();
+    callback export-current-playlist();
+    callback import-m3u-playlist();
+
+    spacing: 8px;
+
+    // 5 Sub-Tabs + Actions
+    HorizontalLayout {
+        spacing: 8px;
+        Rectangle {
+            height: 32px;
+            horizontal-stretch: 1;
+            border-radius: 16px;
+            background: LunariaTheme.surface-container-highest;
+            clip: true;
+
+            HorizontalLayout {
+                padding: 3px;
+                spacing: 3px;
+                for t[idx] in [
+                    { label: "Songs" },
+                    { label: "Albums" },
+                    { label: "Artists" },
+                    { label: "Folders" },
+                    { label: "Playlists" },
+                ]: Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 13px;
+                    background: root.active-subtab == idx
+                        ? LunariaTheme.primary-container
+                        : (lib-tab-ta.has-hover ? LunariaTheme.surface-container-high : transparent);
+                    accessible-role: tab;
+                    accessible-label: t.label + " library tab";
+                    accessible-action-default => {
+                        root.delete-confirm = false;
+                        root.select-subtab(idx);
+                    }
+                    Text {
+                        text: t.label;
+                        accessible-role: none;
+                        font-size: 11px;
+                        font-weight: root.active-subtab == idx ? 700 : 600;
+                        color: root.active-subtab == idx ? LunariaTheme.on-primary-container : LunariaTheme.on-surface-variant;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    lib-tab-ta := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => {
+                            root.delete-confirm = false;
+                            root.select-subtab(idx);
+                        }
+                    }
+                }
+            }
+        }
+
+        TonalActionButton { label: root.sort-label; width: 108px; clicked => { root.cycle-sort(); } }
+        TonalActionButton { label: root.scan-busy ? "Scan..." : "Scan"; width: 58px; busy: root.scan-busy; clicked => { root.rescan-library(); } }
+    }
+
+    // Drill-down Header or Play/Shuffle/Playlist Strip
+    HorizontalLayout {
+        spacing: 6px;
+        if root.in-drilldown: TonalActionButton {
+            label: "← Back";
+            width: 72px;
+            clicked => {
+                root.delete-confirm = false;
+                root.exit-drilldown();
+            }
+        }
+        if root.in-drilldown: Text {
+            text: root.drilldown-title;
+            font-size: 11px;
+            font-weight: 700;
+            color: LunariaTheme.primary;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+        if !root.in-drilldown && root.active-subtab != 4: Text {
+            text: root.active-subtab == 0
+                ? (root.track-rows.length + " track(s)")
+                : (root.group-rows.length + " group(s)");
+            font-size: 10px;
+            color: LunariaTheme.on-surface-variant;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        if root.active-subtab == 4 && !root.in-drilldown: LunariaTextField {
+            horizontal-stretch: 1;
+            text <=> root.new-playlist-name;
+            placeholder: "New playlist name...";
+            accepted(val) => {
+                root.create-playlist(val);
+                root.new-playlist-name = "";
+            }
+        }
+        if root.active-subtab == 4 && !root.in-drilldown: TonalActionButton {
+            label: "Create";
+            filled: true;
+            width: 68px;
+            clicked => {
+                root.create-playlist(root.new-playlist-name);
+                root.new-playlist-name = "";
+            }
+        }
+        if root.active-subtab == 4 && !root.in-drilldown: TonalActionButton {
+            label: "Import .m3u8";
+            width: 98px;
+            clicked => { root.import-m3u-playlist(); }
+        }
+
+        if root.in-playlist-drilldown: TonalActionButton {
+            label: "Export .m3u8";
+            width: 96px;
+            clicked => { root.export-current-playlist(); }
+        }
+        if root.in-playlist-drilldown: Rectangle {
+            width: root.delete-confirm ? 114px : 82px;
+            height: 32px;
+            border-radius: 16px;
+            border-width: del-fs.has-focus ? 2px : 1px;
+            border-color: del-fs.has-focus ? LunariaTheme.primary : (root.delete-confirm ? LunariaTheme.error : LunariaTheme.outline-variant);
+            background: root.delete-confirm
+                ? LunariaTheme.error-container
+                : (del-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high);
+            animate background, border-color, width { duration: 150ms; }
+            accessible-role: button;
+            accessible-label: root.delete-confirm ? "Confirm delete playlist" : "Delete current playlist";
+            accessible-action-default => {
+                if (root.delete-confirm) {
+                    root.delete-confirm = false;
+                    root.delete-current-playlist();
+                } else {
+                    root.delete-confirm = true;
+                }
+            }
+
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 10px;
+                alignment: center;
+                Text {
+                    text: root.delete-confirm ? "Confirm?" : "Delete PL";
+                    accessible-role: none;
+                    font-size: 11px;
+                    font-weight: 700;
+                    color: root.delete-confirm ? LunariaTheme.on-error-container : LunariaTheme.on-surface;
+                    vertical-alignment: center;
+                }
+            }
+
+            del-fs := FocusScope {
+                key-pressed(event) => {
+                    if (event.text == Key.Return || event.text == " ") {
+                        if (root.delete-confirm) {
+                            root.delete-confirm = false;
+                            root.delete-current-playlist();
+                        } else {
+                            root.delete-confirm = true;
+                        }
+                        return accept;
+                    }
+                    if (event.text == Key.Escape && root.delete-confirm) {
+                        root.delete-confirm = false;
+                        return accept;
+                    }
+                    reject
+                }
+
+                del-ta := TouchArea {
+                    mouse-cursor: pointer;
+                    clicked => {
+                        if (root.delete-confirm) {
+                            root.delete-confirm = false;
+                            root.delete-current-playlist();
+                        } else {
+                            root.delete-confirm = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        if root.active-subtab == 0 || root.in-drilldown: TonalActionButton {
+            label: "Play All";
+            filled: true;
+            width: 74px;
+            clicked => { root.play-all(); }
+        }
+        if root.active-subtab == 0 || root.in-drilldown: TonalActionButton {
+            label: "Shuffle";
+            width: 68px;
+            clicked => { root.shuffle-all(); }
+        }
+    }
+
+    // Track List (Songs tab or inside any Group/Playlist/Smart Playlist drill-down)
+    if (root.active-subtab == 0 || root.in-drilldown) && root.track-rows.length == 0: Rectangle {
+        vertical-stretch: 1;
+        border-radius: 12px;
+        background: LunariaTheme.surface-container-low;
+        Text {
+            text: "No tracks found here yet.";
+            font-size: 11px;
+            color: LunariaTheme.on-surface-variant;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    if (root.active-subtab == 0 || root.in-drilldown) && root.track-rows.length > 0: Rectangle {
+        vertical-stretch: 1;
+        clip: true;
+
+        lv-lib-tracks := ListView {
+            x: 0px;
+            y: 0px;
+            width: parent.width - 10px;
+            height: parent.height;
+            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+            for item[idx] in root.track-rows: TrackListRow {
+                track: item;
+                show-playlist-btn: root.show-playlist-add-btn;
+                play-clicked => { root.play-track(idx); }
+                favorite-clicked => { root.favorite-track(idx); }
+                queue-next-clicked => { root.queue-next-track(idx); }
+                add-to-playlist-clicked => { root.add-track-to-playlist(idx); }
+                edit-tags-clicked => { root.edit-track-tags(idx); }
+            }
+        }
+
+        LunariaScrollBar {
+            x: parent.width - 8px;
+            y: 2px;
+            height: parent.height - 4px;
+            viewport-height: lv-lib-tracks.visible-height;
+            content-height: lv-lib-tracks.content-height;
+            content-y <=> lv-lib-tracks.content-y;
+        }
+    }
+
+    // Group Grid / List (Albums / Artists / Folders / Playlists)
+    if root.active-subtab != 0 && !root.in-drilldown && root.group-rows.length == 0: Rectangle {
+        vertical-stretch: 1;
+        border-radius: 12px;
+        background: LunariaTheme.surface-container-low;
+        Text {
+            text: root.active-subtab == 4
+                ? "No playlists yet. Create one above or import an .m3u8 file."
+                : "No groups indexed yet. Add a watched music folder and scan.";
+            font-size: 10px;
+            color: LunariaTheme.on-surface-variant;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            wrap: word-wrap;
+        }
+    }
+
+    if root.active-subtab != 0 && !root.in-drilldown && root.group-rows.length > 0: Rectangle {
+        vertical-stretch: 1;
+        clip: true;
+
+        lv-lib-groups := ListView {
+            x: 0px;
+            y: 0px;
+            width: parent.width - 10px;
+            height: parent.height;
+            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+            for grp[idx] in root.group-rows: Rectangle {
+                height: 54px;
+                VerticalLayout {
+                    padding-bottom: 5px;
+                    Rectangle {
+                        height: 49px;
+                        clip: true;
+                        border-radius: 11px;
+                        background: grp-ta.has-hover ? LunariaTheme.surface-container-high : LunariaTheme.surface-container-low;
+                        border-width: 1px;
+                        border-color: grp-ta.has-hover ? LunariaTheme.outline : LunariaTheme.outline-variant;
+                        animate background, border-color { duration: 120ms; }
+                        accessible-role: button;
+                        accessible-label: grp.title + ", " + grp.meta-badge;
+                        accessible-action-default => { root.open-group(idx); }
+
+                        HorizontalLayout {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            spacing: 10px;
+
+                            VerticalLayout {
+                                horizontal-stretch: 1;
+                                alignment: center;
+                                spacing: 2px;
+                                Text {
+                                    text: grp.title;
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    color: LunariaTheme.on-surface;
+                                    overflow: elide;
+                                }
+                                Text {
+                                    text: grp.subtitle;
+                                    font-size: 10px;
+                                    font-weight: 500;
+                                    color: LunariaTheme.on-surface-variant;
+                                    overflow: elide;
+                                }
+                            }
+
+                            if grp.has-hi-res: Rectangle {
+                                width: 44px;
+                                height: 18px;
+                                y: (parent.height - self.height) / 2;
+                                border-radius: 5px;
+                                background: LunariaTheme.primary-container;
+                                Text {
+                                    text: "HI-RES";
+                                    font-size: 8px;
+                                    font-weight: 700;
+                                    color: LunariaTheme.on-primary-container;
+                                    horizontal-alignment: center;
+                                    vertical-alignment: center;
+                                }
+                            }
+
+                            Text {
+                                text: grp.meta-badge;
+                                font-size: 10px;
+                                font-weight: 700;
+                                color: LunariaTheme.primary;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        grp-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.open-group(idx); }
+                        }
+                    }
+                }
+            }
+        }
+
+        LunariaScrollBar {
+            x: parent.width - 8px;
+            y: 2px;
+            height: parent.height - 4px;
+            viewport-height: lv-lib-groups.visible-height;
+            content-height: lv-lib-groups.content-height;
+            content-y <=> lv-lib-groups.content-y;
+        }
+    }
+}
+
+export component SearchView inherits VerticalLayout {
+    in-out property <string> query: "";
+    in-out property <bool> filter-hires: false;
+    in-out property <bool> filter-lossless: false;
+    in-out property <bool> filter-flac: false;
+    in-out property <bool> filter-favorites: false;
+    in property <string> result-summary: "Type to search title, artist, album, folder";
+    in property <[TrackRow]> results: [];
+    in property <bool> show-playlist-add-btn: false;
+
+    public function focus-search() {
+        search-box.focus-input();
+    }
+
+    callback query-changed(string);
+    callback toggle-chip(int);
+    callback play-result(int);
+    callback favorite-result(int);
+    callback queue-next-result(int);
+    callback add-result-to-playlist(int);
+    callback edit-result-tags(int);
+
+    spacing: 8px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: "Instant Search";
+            font-size: 16px;
+            font-weight: 700;
+            color: LunariaTheme.on-surface;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+        }
+        Text {
+            text: "Shortcut: Ctrl+K";
+            font-size: 10px;
+            font-weight: 600;
+            color: LunariaTheme.on-surface-variant;
+            vertical-alignment: center;
+        }
+    }
+
+    search-box := LunariaTextField {
+        text <=> root.query;
+        placeholder: "Search tracks, artists, albums, folders, genres...";
+        edited(val) => { root.query-changed(val); }
+        accepted(val) => { root.query-changed(val); }
+    }
+
+    HorizontalLayout {
+        spacing: 6px;
+        PresetChip { label: "Hi-Res"; active: root.filter-hires; clicked => { root.toggle-chip(0); } }
+        PresetChip { label: "Lossless"; active: root.filter-lossless; clicked => { root.toggle-chip(1); } }
+        PresetChip { label: "FLAC"; active: root.filter-flac; clicked => { root.toggle-chip(2); } }
+        PresetChip { label: "Favorites"; active: root.filter-favorites; clicked => { root.toggle-chip(3); } }
+        Rectangle { horizontal-stretch: 1; }
+        Text {
+            text: root.result-summary;
+            font-size: 9px;
+            color: LunariaTheme.on-surface-variant;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+
+    if root.results.length == 0: Rectangle {
+        vertical-stretch: 1;
+        border-radius: 12px;
+        background: LunariaTheme.surface-container-low;
+        Text {
+            text: "No matching tracks. Try clearing a filter chip or searching another keyword.";
+            font-size: 10px;
+            color: LunariaTheme.on-surface-variant;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    if root.results.length > 0: Rectangle {
+        vertical-stretch: 1;
+        clip: true;
+
+        lv-search := ListView {
+            x: 0px;
+            y: 0px;
+            width: parent.width - 10px;
+            height: parent.height;
+            vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+            horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+            for item[idx] in root.results: TrackListRow {
+                track: item;
+                show-playlist-btn: root.show-playlist-add-btn;
+                play-clicked => { root.play-result(idx); }
+                favorite-clicked => { root.favorite-result(idx); }
+                queue-next-clicked => { root.queue-next-result(idx); }
+                add-to-playlist-clicked => { root.add-result-to-playlist(idx); }
+                edit-tags-clicked => { root.edit-result-tags(idx); }
+            }
+        }
+
+        LunariaScrollBar {
+            x: parent.width - 8px;
+            y: 2px;
+            height: parent.height - 4px;
+            viewport-height: lv-search.visible-height;
+            content-height: lv-search.content-height;
+            content-y <=> lv-search.content-y;
+        }
+    }
+}
+
+export component EqualizerView inherits VerticalLayout {
+    in property <bool> eq-enabled: false;
+    in property <string> active-preset-name: "Flat";
+    in property <int> active-preset-idx: 0;
+    in property <image> bode-curve;
+    in property <[EqBandRow]> bands: [];
+    in property <string> preamp-label: "0.0 dB";
+    in property <string> rg-mode-label: "ReplayGain: Off";
+    in property <bool> rg-active: false;
+    in property <string> rg-preamp-label: "0.0 dB";
+    in property <string> balance-label: "Center";
+    in property <bool> mono-audio: false;
+    in property <string> crossfade-label: "Crossfade: 0s";
+
+    callback toggle-enabled();
+    callback import-autoeq();
+    callback reset-flat();
+    callback select-preset(int);
+    callback set-band-gain(int, float);
+    callback step-preamp(float);
+    callback cycle-replay-gain();
+    callback step-rg-preamp(float);
+    callback cycle-balance();
+    callback toggle-mono();
+    callback cycle-crossfade();
+
+    spacing: 8px;
+
+    HorizontalLayout {
+        spacing: 6px;
+        Rectangle {
+            horizontal-stretch: 1;
+            vertical-stretch: 0;
+            height: 36px;
+            preferred-width: 0px;
+            min-width: 0px;
+            clip: true;
+
+            VerticalLayout {
+                width: 100%;
+                height: 100%;
+                alignment: center;
+                Text {
+                    text: "64-bit RBJ Equalizer & AutoEQ";
+                    font-size: 15px;
+                    font-weight: 700;
+                    color: LunariaTheme.on-surface;
+                    overflow: elide;
+                }
+                Text {
+                    text: "Profile: " + root.active-preset-name + " • Scroll ±0.5 · Double/Right-click 0 dB";
+                    font-size: 10px;
+                    font-weight: 600;
+                    color: LunariaTheme.primary;
+                    overflow: elide;
+                }
+            }
+        }
+        PresetChip {
+            width: 68px;
+            label: root.eq-enabled ? "EQ: ON" : "EQ: OFF";
+            active: root.eq-enabled;
+            clicked => { root.toggle-enabled(); }
+        }
+        TonalActionButton { label: "AutoEQ .txt"; width: 104px; clicked => { root.import-autoeq(); } }
+        TonalActionButton { label: "Flat"; width: 58px; clicked => { root.reset-flat(); } }
+    }
+
+    // Live Frequency Magnitude Bode Plot (20 Hz .. 20 kHz)
+    Rectangle {
+        height: 118px;
+        border-radius: 12px;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        background: LunariaTheme.surface-container-lowest;
+        clip: true;
+
+        Image {
+            width: parent.width;
+            height: parent.height;
+            source: root.bode-curve;
+            image-fit: fill;
+        }
+
+        Text {
+            x: 8px;
+            y: 5px;
+            text: "+15 dB  |  20 Hz → 20 kHz log scale";
+            font-size: 8px;
+            color: LunariaTheme.on-surface-variant;
+        }
+        Text {
+            x: 8px;
+            y: parent.height - 15px;
+            text: "-15 dB";
+            font-size: 8px;
+            color: LunariaTheme.on-surface-variant;
+        }
+    }
+
+    // 6 Built-In Presets
+    HorizontalLayout {
+        spacing: 5px;
+        for name[idx] in ["Flat", "Bass", "Vocal", "Acoustic", "Treble", "Studio Ref"]: PresetChip {
+            horizontal-stretch: 1;
+            preferred-width: 0px;
+            min-width: 0px;
+            label: name;
+            active: root.active-preset-idx == idx;
+            clicked => { root.select-preset(idx); }
+        }
+    }
+
+    // Interactive 10-Band ISO Graphic Sliders
+    Rectangle {
+        vertical-stretch: 1;
+        clip: true;
+        border-radius: 12px;
+        background: LunariaTheme.surface-container-low;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+
+        HorizontalLayout {
+            padding: 8px;
+            spacing: 4px;
+
+            if root.bands.length == 0: Rectangle {
+                horizontal-stretch: 1;
+            }
+
+            for band in root.bands: Rectangle {
+                horizontal-stretch: 1;
+                preferred-width: 0px;
+                min-width: 0px;
+                clip: true;
+
+                VerticalLayout {
+                    width: 100%;
+                    height: 100%;
+                    spacing: 4px;
+
+                    Text {
+                        height: 14px;
+                        text: band.gain-text;
+                        font-size: 9px;
+                        font-weight: 700;
+                        color: LunariaTheme.primary;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: clip;
+                    }
+
+                    // Vertical 10-Band Analog Mixer Fader Channel
+                    VerticalEqMixerFader {
+                        gain-db: band.gain-db;
+                        eq-enabled: root.eq-enabled;
+                        gain-changed(g) => { root.set-band-gain(band.band-index, g); }
+                    }
+
+                    Text {
+                        height: 14px;
+                        text: band.freq-label;
+                        font-size: 9px;
+                        font-weight: 700;
+                        color: LunariaTheme.on-surface-variant;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: clip;
+                    }
+                }
+            }
+        }
+    }
+
+    // Audiophile Preamp, ReplayGain, Balance, Mono, Crossfade
+    HorizontalLayout {
+        spacing: 6px;
+        Text { text: "Preamp:"; font-size: 9px; color: LunariaTheme.on-surface-variant; vertical-alignment: center; }
+        PresetChip { width: 36px; label: "-"; active: false; clicked => { root.step-preamp(-1.0); } }
+        PresetChip { width: 72px; label: root.preamp-label; active: root.preamp-label != "0.0 dB"; clicked => { root.step-preamp(0.0); } }
+        PresetChip { width: 36px; label: "+"; active: false; clicked => { root.step-preamp(1.0); } }
+
+        Rectangle { width: 4px; }
+        PresetChip { label: root.rg-mode-label; active: root.rg-active; horizontal-stretch: 1; preferred-width: 0px; min-width: 0px; clicked => { root.cycle-replay-gain(); } }
+        PresetChip { width: 88px; label: "RG " + root.rg-preamp-label; active: false; clicked => { root.step-rg-preamp(1.0); } }
+    }
+
+    HorizontalLayout {
+        spacing: 6px;
+        PresetChip { label: "Balance: " + root.balance-label; active: root.balance-label != "Center"; horizontal-stretch: 1; preferred-width: 0px; min-width: 0px; clicked => { root.cycle-balance(); } }
+        PresetChip { label: root.mono-audio ? "Mono: On" : "Stereo"; active: root.mono-audio; horizontal-stretch: 1; preferred-width: 0px; min-width: 0px; clicked => { root.toggle-mono(); } }
+        PresetChip { label: root.crossfade-label; active: root.crossfade-label != "Crossfade: 0s"; horizontal-stretch: 1; preferred-width: 0px; min-width: 0px; clicked => { root.cycle-crossfade(); } }
+    }
+}
+
+export component StatsView inherits VerticalLayout {
+    in property <string> kpi-total-plays: "0";
+    in property <string> kpi-listen-time: "0m";
+    in property <string> kpi-unique-tracks: "0";
+    in property <string> kpi-hires-share: "0%";
+    in property <[StatArtistRow]> top-artists: [];
+    in property <[TrackRow]> top-tracks: [];
+
+    callback play-top-track(int);
+    callback favorite-top-track(int);
+    callback queue-top-track(int);
+
+    spacing: 10px;
+
+    Text {
+        text: "Local Listening Stats (100% On-Device SQLite)";
+        font-size: 15px;
+        font-weight: 700;
+        color: LunariaTheme.on-surface;
+    }
+
+    HorizontalLayout {
+        spacing: 8px;
+        for card in [
+            { label: "Total Plays", val: root.kpi-total-plays },
+            { label: "Listening Time", val: root.kpi-listen-time },
+            { label: "Unique Tracks", val: root.kpi-unique-tracks },
+            { label: "Hi-Res Share", val: root.kpi-hires-share },
+        ]: Rectangle {
+            horizontal-stretch: 1;
+            height: 60px;
+            border-radius: 12px;
+            background: LunariaTheme.surface-container-low;
+            border-width: 1px;
+            border-color: LunariaTheme.outline-variant;
+            VerticalLayout {
+                padding: 10px;
+                spacing: 3px;
+                Text { text: card.label; font-size: 9px; font-weight: 600; color: LunariaTheme.on-surface-variant; overflow: elide; }
+                Text { text: card.val; font-size: 15px; font-weight: 700; color: LunariaTheme.primary; overflow: elide; }
+            }
+        }
+    }
+
+    if root.top-artists.length == 0 && root.top-tracks.length == 0: Rectangle {
+        vertical-stretch: 1;
+        border-radius: 14px;
+        background: LunariaTheme.surface-container-low;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        VerticalLayout {
+            alignment: center;
+            spacing: 6px;
+            Text {
+                text: "No listening history recorded yet.";
+                font-size: 12px;
+                font-weight: 700;
+                color: LunariaTheme.on-surface;
+                horizontal-alignment: center;
+            }
+            Text {
+                text: "Play tracks to populate local Top Artists and Most Played counts in SQLite.";
+                font-size: 10px;
+                color: LunariaTheme.on-surface-variant;
+                horizontal-alignment: center;
+                wrap: word-wrap;
+            }
+        }
+    }
+
+    if root.top-artists.length > 0 || root.top-tracks.length > 0: HorizontalLayout {
+        vertical-stretch: 1;
+        spacing: 10px;
+
+        // Top Artists
+        VerticalLayout {
+            width: 216px;
+            spacing: 6px;
+            Text { text: "Top Artists"; font-size: 12px; font-weight: 700; color: LunariaTheme.on-surface; }
+            Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                lv-artists := ListView {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width - 10px;
+                    height: parent.height;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    for art in root.top-artists: Rectangle {
+                        height: 46px;
+                        VerticalLayout {
+                            padding-bottom: 4px;
+                            Rectangle {
+                                height: 42px;
+                                border-radius: 9px;
+                                background: LunariaTheme.surface-container-low;
+                                border-width: 1px;
+                                border-color: LunariaTheme.outline-variant;
+                                HorizontalLayout {
+                                    padding-left: 10px;
+                                    padding-right: 10px;
+                                    spacing: 8px;
+                                    Text {
+                                        text: "#" + art.rank;
+                                        font-size: 10px;
+                                        font-weight: 700;
+                                        color: LunariaTheme.primary;
+                                        vertical-alignment: center;
+                                        width: 24px;
+                                    }
+                                    VerticalLayout {
+                                        horizontal-stretch: 1;
+                                        alignment: center;
+                                        Text { text: art.name; font-size: 11px; font-weight: 700; color: LunariaTheme.on-surface; overflow: elide; }
+                                        Text { text: art.plays-text + " • " + art.duration-text; font-size: 9px; color: LunariaTheme.on-surface-variant; overflow: elide; }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                LunariaScrollBar {
+                    x: parent.width - 8px;
+                    y: 2px;
+                    height: parent.height - 4px;
+                    viewport-height: lv-artists.visible-height;
+                    content-height: lv-artists.content-height;
+                    content-y <=> lv-artists.content-y;
+                }
+            }
+        }
+
+        // Most Played Tracks
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 6px;
+            Text { text: "Most Played Tracks"; font-size: 12px; font-weight: 700; color: LunariaTheme.on-surface; }
+            Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                lv-top-tracks := ListView {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width - 10px;
+                    height: parent.height;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    for item[idx] in root.top-tracks: TrackListRow {
+                        track: item;
+                        show-tag-btn: false;
+                        play-clicked => { root.play-top-track(idx); }
+                        favorite-clicked => { root.favorite-top-track(idx); }
+                        queue-next-clicked => { root.queue-top-track(idx); }
+                    }
+                }
+
+                LunariaScrollBar {
+                    x: parent.width - 8px;
+                    y: 2px;
+                    height: parent.height - 4px;
+                    viewport-height: lv-top-tracks.visible-height;
+                    content-height: lv-top-tracks.content-height;
+                    content-y <=> lv-top-tracks.content-y;
+                }
+            }
+        }
+    }
+}
+
+export component SettingsView inherits VerticalLayout {
+    in property <int> output-mode-index: 0;
+    in property <[DeviceRow]> devices: [];
+    in property <bool> chime-busy: false;
+    in property <[WatchedFolderRow]> watched-folders: [];
+    in property <string> folder-filter-label: "Filter: Blacklist (System excluded)";
+    in property <bool> use-album-art-theme: true;
+    in property <[SwatchRow]> swatches: [];
+    in property <string> active-seed-hex: "#32428A";
+    in property <bool> use-software-renderer: false;
+    in property <bool> minimize-to-tray: true;
+    in property <bool> discord-rpc-enabled: true;
+    in property <string> discord-rpc-status-text: "Discord: Waiting for app";
+    in property <string> storage-mode-badge: "Standard AppData";
+    in property <string> db-path-text: "";
+    in property <string> app-version-label: "v0.1.0";
+
+    callback select-output-mode(int);
+    callback refresh-devices();
+    callback select-device(int);
+    callback play-test-chime();
+    callback open-single-file();
+    callback add-watched-folder();
+    callback remove-watched-folder(int);
+    callback rescan-library();
+    callback cycle-folder-filter-mode();
+    callback toggle-theme();
+    callback toggle-album-art-theme();
+    callback select-seed(int);
+    callback toggle-software-renderer();
+    callback toggle-minimize-to-tray();
+    callback toggle-discord-rpc();
+
+    spacing: 8px;
+
+    HorizontalLayout {
+        spacing: 8px;
+        Text {
+            text: "Audio, Library Folders & Appearance";
+            font-size: 15px;
+            font-weight: 700;
+            color: LunariaTheme.on-surface;
+            horizontal-stretch: 1;
+            vertical-alignment: center;
+        }
+        TonalActionButton { label: "Open File..."; width: 92px; clicked => { root.open-single-file(); } }
+    }
+
+    // Audio Output Mode Switch + Chime/Refresh
+    HorizontalLayout {
+        spacing: 6px;
+        Rectangle {
+            height: 32px;
+            horizontal-stretch: 1;
+            border-radius: 16px;
+            background: LunariaTheme.surface-container-highest;
+            clip: true;
+
+            HorizontalLayout {
+                padding: 3px;
+                spacing: 4px;
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 13px;
+                    background: root.output-mode-index == 0
+                        ? LunariaTheme.primary-container
+                        : (mode0-ta.has-hover ? LunariaTheme.surface-container-high : transparent);
+                    accessible-role: tab;
+                    accessible-label: "DSP Float32 Shared mode";
+                    accessible-action-default => { root.select-output-mode(0); }
+                    Text {
+                        text: "DSP Float32 (Shared)";
+                        accessible-role: none;
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: root.output-mode-index == 0 ? LunariaTheme.on-primary-container : LunariaTheme.on-surface-variant;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    mode0-ta := TouchArea { mouse-cursor: pointer; clicked => { root.select-output-mode(0); } }
+                }
+                Rectangle {
+                    horizontal-stretch: 1;
+                    border-radius: 13px;
+                    background: root.output-mode-index == 1
+                        ? LunariaTheme.primary-container
+                        : (mode1-ta.has-hover ? LunariaTheme.surface-container-high : transparent);
+                    accessible-role: tab;
+                    accessible-label: "Purist Direct Exclusive mode";
+                    accessible-action-default => { root.select-output-mode(1); }
+                    Text {
+                        text: "Purist Direct (Exclusive)";
+                        accessible-role: none;
+                        font-size: 10px;
+                        font-weight: 700;
+                        color: root.output-mode-index == 1 ? LunariaTheme.on-primary-container : LunariaTheme.on-surface-variant;
+                        horizontal-alignment: center;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    mode1-ta := TouchArea { mouse-cursor: pointer; clicked => { root.select-output-mode(1); } }
+                }
+            }
+        }
+
+        TonalActionButton { label: "Refresh"; width: 68px; clicked => { root.refresh-devices(); } }
+        TonalActionButton { label: "Chime"; width: 64px; busy: root.chime-busy; clicked => { root.play-test-chime(); } }
+    }
+
+    // Middle Split: WASAPI Endpoints + Watched Folders
+    HorizontalLayout {
+        vertical-stretch: 1;
+        spacing: 10px;
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 4px;
+            Text { text: "WASAPI Output Endpoints"; font-size: 11px; font-weight: 700; color: LunariaTheme.on-surface; }
+            Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                lv-devices := ListView {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width - 10px;
+                    height: parent.height;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    for dev[idx] in root.devices: Rectangle {
+                        height: 46px;
+                        VerticalLayout {
+                            padding-bottom: 4px;
+                            Rectangle {
+                                height: 42px;
+                                clip: true;
+                                border-radius: 9px;
+                                background: dev.is-selected
+                                    ? LunariaTheme.secondary-container
+                                    : (dev-ta.has-hover ? LunariaTheme.surface-container-high : LunariaTheme.surface-container-low);
+                                border-width: 1px;
+                                border-color: dev.is-selected ? LunariaTheme.primary : (dev-ta.has-hover ? LunariaTheme.outline : LunariaTheme.outline-variant);
+                                animate background, border-color { duration: 120ms; }
+                                accessible-role: button;
+                                accessible-label: "Output device " + dev.name;
+                                accessible-action-default => { root.select-device(idx); }
+                                HorizontalLayout {
+                                    padding-left: 9px;
+                                    padding-right: 9px;
+                                    VerticalLayout {
+                                        horizontal-stretch: 1;
+                                        alignment: center;
+                                        Text {
+                                            text: dev.name;
+                                            font-size: 11px;
+                                            font-weight: 700;
+                                            color: dev.is-selected ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface;
+                                            overflow: elide;
+                                        }
+                                        Text {
+                                            text: dev.category + " • " + dev.format-summary;
+                                            font-size: 8px;
+                                            color: dev.is-selected ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+                                            overflow: elide;
+                                        }
+                                    }
+                                    if dev.is-default: Text {
+                                        text: "DEF";
+                                        font-size: 8px;
+                                        font-weight: 700;
+                                        color: LunariaTheme.primary;
+                                        vertical-alignment: center;
+                                    }
+                                }
+                                dev-ta := TouchArea { mouse-cursor: pointer; clicked => { root.select-device(idx); } }
+                            }
+                        }
+                    }
+                }
+
+                LunariaScrollBar {
+                    x: parent.width - 8px;
+                    y: 2px;
+                    height: parent.height - 4px;
+                    viewport-height: lv-devices.visible-height;
+                    content-height: lv-devices.content-height;
+                    content-y <=> lv-devices.content-y;
+                }
+            }
+        }
+
+        VerticalLayout {
+            horizontal-stretch: 1;
+            spacing: 4px;
+            HorizontalLayout {
+                spacing: 4px;
+                Text { text: "Watched Folders"; font-size: 11px; font-weight: 700; color: LunariaTheme.on-surface; horizontal-stretch: 1; vertical-alignment: center; }
+                PresetChip { label: "+ Add"; active: true; clicked => { root.add-watched-folder(); } }
+                PresetChip { label: "Scan"; active: false; clicked => { root.rescan-library(); } }
+            }
+            if root.watched-folders.length == 0: Rectangle {
+                vertical-stretch: 1;
+                border-radius: 9px;
+                background: LunariaTheme.surface-container-low;
+                border-width: 1px;
+                border-color: LunariaTheme.outline-variant;
+                Text {
+                    text: "No watched folders added.\nClick '+ Add' above to pick a music folder.";
+                    font-size: 9px;
+                    color: LunariaTheme.on-surface-variant;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                }
+            }
+
+            if root.watched-folders.length > 0: Rectangle {
+                vertical-stretch: 1;
+                clip: true;
+
+                lv-folders := ListView {
+                    x: 0px;
+                    y: 0px;
+                    width: parent.width - 10px;
+                    height: parent.height;
+                    vertical-scrollbar-policy: ScrollBarPolicy.always-off;
+                    horizontal-scrollbar-policy: ScrollBarPolicy.always-off;
+                    for folder in root.watched-folders: Rectangle {
+                        height: 36px;
+                        VerticalLayout {
+                            padding-bottom: 4px;
+                            Rectangle {
+                                height: 32px;
+                                clip: true;
+                                border-radius: 8px;
+                                background: LunariaTheme.surface-container-low;
+                                border-width: 1px;
+                                border-color: LunariaTheme.outline-variant;
+                                HorizontalLayout {
+                                    padding-left: 8px;
+                                    padding-right: 6px;
+                                    spacing: 4px;
+                                    Text {
+                                        text: folder.path;
+                                        font-size: 9px;
+                                        color: LunariaTheme.on-surface;
+                                        horizontal-stretch: 1;
+                                        vertical-alignment: center;
+                                        overflow: elide;
+                                    }
+                                    Rectangle {
+                                        width: 20px;
+                                        height: 20px;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: 6px;
+                                        background: rm-folder-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                                        accessible-role: button;
+                                        accessible-label: "Remove watched folder " + folder.path;
+                                        accessible-action-default => { root.remove-watched-folder(folder.index); }
+                                        Text { text: "×"; accessible-role: none; font-size: 10px; color: LunariaTheme.on-surface-variant; horizontal-alignment: center; vertical-alignment: center; }
+                                        rm-folder-ta := TouchArea { mouse-cursor: pointer; clicked => { root.remove-watched-folder(folder.index); } }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                LunariaScrollBar {
+                    x: parent.width - 8px;
+                    y: 2px;
+                    height: parent.height - 4px;
+                    viewport-height: lv-folders.visible-height;
+                    content-height: lv-folders.content-height;
+                    content-y <=> lv-folders.content-y;
+                }
+            }
+        }
+    }
+
+    // Theme, Dynamic Album Art HCT, Renderer & Discord Rich Presence Footer Card
+    Rectangle {
+        height: 164px;
+        border-radius: 12px;
+        background: LunariaTheme.surface-container-low;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+
+        VerticalLayout {
+            padding: 10px;
+            spacing: 7px;
+
+            HorizontalLayout {
+                spacing: 5px;
+                PresetChip {
+                    label: LunariaTheme.is-dark ? "Dark" : "Light";
+                    active: true;
+                    clicked => { root.toggle-theme(); }
+                }
+                PresetChip {
+                    label: root.use-album-art-theme ? "Art HCT: On" : "Art HCT: Off";
+                    active: root.use-album-art-theme;
+                    clicked => { root.toggle-album-art-theme(); }
+                }
+                PresetChip {
+                    label: root.use-software-renderer ? "SW 0-VRAM" : "GPU FemtoVG";
+                    active: root.use-software-renderer;
+                    clicked => { root.toggle-software-renderer(); }
+                }
+                PresetChip {
+                    label: root.minimize-to-tray ? "Tray: On" : "Tray: Off";
+                    active: root.minimize-to-tray;
+                    clicked => { root.toggle-minimize-to-tray(); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                PresetChip {
+                    label: root.discord-rpc-enabled ? "Discord RPC: On" : "Discord RPC: Off";
+                    active: root.discord-rpc-enabled;
+                    clicked => { root.toggle-discord-rpc(); }
+                }
+                Text {
+                    text: root.discord-rpc-status-text;
+                    font-size: 9px;
+                    font-weight: 700;
+                    color: root.discord-rpc-enabled ? LunariaTheme.primary : LunariaTheme.on-surface-variant;
+                    vertical-alignment: center;
+                }
+                Text {
+                    horizontal-stretch: 1;
+                    text: "Local Windows IPC • Zero network";
+                    font-size: 9px;
+                    color: LunariaTheme.on-surface-variant;
+                    vertical-alignment: center;
+                    horizontal-alignment: right;
+                    overflow: elide;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Seed " + root.active-seed-hex + ":";
+                    font-size: 10px;
+                    color: LunariaTheme.on-surface-variant;
+                    vertical-alignment: center;
+                }
+                for sw[idx] in root.swatches: Rectangle {
+                    width: 24px;
+                    height: 24px;
+                    border-radius: sw.selected ? 7px : 12px;
+                    background: sw.color-preview;
+                    border-width: sw.selected ? 2px : 1px;
+                    border-color: sw.selected ? LunariaTheme.on-surface : LunariaTheme.outline-variant;
+                    accessible-role: button;
+                    accessible-label: "Select theme color " + sw.name;
+                    accessible-action-default => { root.select-seed(idx); }
+                    TouchArea { mouse-cursor: pointer; clicked => { root.select-seed(idx); } }
+                }
+                Rectangle { horizontal-stretch: 1; }
+                PresetChip {
+                    label: root.folder-filter-label;
+                    active: false;
+                    clicked => { root.cycle-folder-filter-mode(); }
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                Rectangle {
+                    height: 20px;
+                    min-width: 110px;
+                    border-radius: 5px;
+                    background: LunariaTheme.primary-container;
+                    HorizontalLayout {
+                        padding-left: 8px;
+                        padding-right: 8px;
+                        Text {
+                            text: root.storage-mode-badge;
+                            font-size: 9px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-primary-container;
+                            vertical-alignment: center;
+                        }
+                    }
+                }
+                Text {
+                    text: root.db-path-text;
+                    font-size: 9px;
+                    color: LunariaTheme.on-surface-variant;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            HorizontalLayout {
+                spacing: 8px;
+                Text {
+                    text: "Lunaria Windows " + root.app-version-label + " • GPL-3.0 • Made with Slint • Zero Network";
+                    font-size: 9px;
+                    color: LunariaTheme.on-surface-variant;
+                    horizontal-stretch: 1;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+                Text {
+                    text: "Shortcuts: Space · Ctrl+K · Ctrl+E · Ctrl+O · ←/→ · ↑/↓";
+                    font-size: 8px;
+                    color: LunariaTheme.on-surface-variant;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+}

@@ -4,9 +4,22 @@ import { PrivacyContent } from "@/components/PrivacyContent";
 export const metadata: Metadata = {
   title: "Privacy Policy",
   description:
-    "Lumyn declares zero network permissions and stores all library metadata, playlists, and EQ settings locally on your Android device.",
+    "Lunaria declares zero network permissions on Android and compiles with zero HTTP dependencies on Windows, storing all library metadata locally.",
   alternates: {
     canonical: "/privacy",
+  },
+  openGraph: {
+    type: "article",
+    url: "/privacy",
+    title: "Privacy Policy | Lunaria",
+    description:
+      "Offline by architecture on Android and Windows: zero network permissions, zero telemetry, verified on every CI build.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Privacy Policy | Lunaria",
+    description:
+      "Offline by architecture: zero network permissions and local-only storage.",
   },
 };
 

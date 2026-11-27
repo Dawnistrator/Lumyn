@@ -1,0 +1,1179 @@
+// Reusable Material Design 3 Expressive components for Lunaria Windows.
+
+import { LunariaTheme, MarqueeClock } from "./theme.slint";
+import { TrackRow } from "./types.slint";
+
+export component MarqueeText inherits Rectangle {
+    in property <string> text: "";
+    in property <length> font-size: 12px;
+    in property <int> font-weight: 700;
+    in property <color> text-color: LunariaTheme.on-surface;
+    in property <bool> active: false;
+    in property <float> initial-delay-sec: 1.8;
+    in property <float> speed-px-per-sec: 34.0;
+    in property <length> gap: 40px;
+
+    private property <length> text-width: measure.preferred-width;
+    private property <bool> needs-scroll: root.width > 0px && root.text-width > root.width + 1px;
+    private property <bool> scrolling: root.active && root.needs-scroll;
+    private property <float> cycle-px: (root.text-width + root.gap) / 1px;
+    private property <float> scroll-duration-sec: max(0.5, root.cycle-px / max(1.0, root.speed-px-per-sec));
+    private property <float> period-sec: root.initial-delay-sec + root.scroll-duration-sec;
+    private property <float> elapsed-clamped: root.scrolling ? max(0.0, MarqueeClock.elapsed-sec) : 0.0;
+    private property <float> phase-sec: root.scrolling
+        ? (root.elapsed-clamped - floor(root.elapsed-clamped / root.period-sec) * root.period-sec)
+        : 0.0;
+    private property <length> scroll-offset: (root.scrolling && root.phase-sec > root.initial-delay-sec)
+        ? -((root.phase-sec - root.initial-delay-sec) * root.speed-px-per-sec) * 1px
+        : 0px;
+
+    horizontal-stretch: 1;
+    vertical-stretch: 0;
+    preferred-width: 0px;
+    min-width: 0px;
+    height: measure.preferred-height;
+    clip: true;
+
+    measure := Text {
+        x: 0px;
+        y: 0px;
+        opacity: 0.0;
+        accessible-role: none;
+        text: root.text;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+    }
+
+    if !root.scrolling: Text {
+        x: 0px;
+        y: 0px;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        color: root.text-color;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    if root.scrolling: Text {
+        x: root.scroll-offset;
+        y: 0px;
+        width: root.text-width + 2px;
+        height: parent.height;
+        text: root.text;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        color: root.text-color;
+        vertical-alignment: center;
+        overflow: clip;
+    }
+
+    if root.scrolling: Text {
+        x: root.scroll-offset + root.text-width + root.gap;
+        y: 0px;
+        width: root.text-width + 2px;
+        height: parent.height;
+        text: root.text;
+        accessible-role: none;
+        font-size: root.font-size;
+        font-weight: root.font-weight;
+        color: root.text-color;
+        vertical-alignment: center;
+        overflow: clip;
+    }
+}
+
+export component NavRailItem inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    in property <string> badge: "";
+    callback clicked();
+
+    height: 38px;
+    border-radius: 12px;
+    border-width: nav-fs.has-focus ? 2px : 0px;
+    border-color: LunariaTheme.primary;
+    background: root.active
+        ? LunariaTheme.secondary-container
+        : (nav-ta.has-hover ? LunariaTheme.surface-container-high : transparent);
+    animate background { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+    accessible-role: tab;
+    accessible-label: root.badge != "" ? root.label + ", " + root.badge + " items" : root.label;
+    accessible-action-default => { root.clicked(); }
+
+    HorizontalLayout {
+        width: 100%;
+        height: 100%;
+        padding-left: 12px;
+        padding-right: 10px;
+        spacing: 9px;
+
+        Rectangle {
+            width: 7px;
+            height: 7px;
+            border-radius: 4px;
+            y: (parent.height - self.height) / 2;
+            background: root.active ? LunariaTheme.primary : LunariaTheme.outline;
+        }
+
+        Text {
+            text: root.label;
+            accessible-role: none;
+            font-size: 12px;
+            font-weight: root.active ? 700 : 600;
+            color: root.active ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+            vertical-alignment: center;
+            horizontal-stretch: 1;
+            overflow: elide;
+        }
+
+        if root.badge != "": Rectangle {
+            height: 18px;
+            min-width: 24px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 9px;
+            background: root.active ? LunariaTheme.primary-container : LunariaTheme.surface-container-highest;
+            HorizontalLayout {
+                padding-left: 6px;
+                padding-right: 6px;
+                Text {
+                    text: root.badge;
+                    accessible-role: none;
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: root.active ? LunariaTheme.on-primary-container : LunariaTheme.on-surface-variant;
+                    vertical-alignment: center;
+                }
+            }
+        }
+    }
+
+    nav-fs := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+
+        nav-ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.clicked(); }
+        }
+    }
+}
+
+export component AnalogMixerFader inherits Rectangle {
+    in property <float> progress: 0.0;
+    in property <bool> has-track: false;
+    in property <bool> is-playing: false;
+    callback seek(float);
+    callback step-seek(int);
+
+    private property <float> clamped-progress: max(0.0, min(1.0, root.progress));
+    private property <length> cap-width: 18px;
+    private property <length> travel: max(1px, root.width - root.cap-width);
+
+    height: 32px;
+    horizontal-stretch: 1;
+    clip: false;
+    accessible-role: slider;
+    accessible-label: "Playback seek fader";
+    accessible-enabled: root.has-track;
+
+    // Top & bottom calibrated studio console ticks
+    for tick-idx in 11: Rectangle {
+        private property <bool> is-major: tick-idx == 0 || tick-idx == 5 || tick-idx == 10;
+        x: (root.cap-width / 2) + (tick-idx / 10.0) * root.travel - 1px;
+        y: 0px;
+        width: 2px;
+        height: parent.height;
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: 1px;
+            width: is-major ? 1.5px : 1px;
+            height: is-major ? 5px : 3px;
+            background: is-major ? LunariaTheme.outline : LunariaTheme.outline-variant;
+            opacity: is-major ? 0.9 : 0.8;
+        }
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - self.height - 1px;
+            width: is-major ? 1.5px : 1px;
+            height: is-major ? 5px : 3px;
+            background: is-major ? LunariaTheme.outline : LunariaTheme.outline-variant;
+            opacity: is-major ? 0.9 : 0.8;
+        }
+    }
+
+    // Recessed fader slot groove
+    Rectangle {
+        x: 7px;
+        width: max(1px, parent.width - 14px);
+        height: 8px;
+        y: (parent.height - self.height) / 2;
+        border-radius: 4px;
+        background: LunariaTheme.surface-container-lowest;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        clip: true;
+
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            height: parent.height - 2px;
+            width: max(0px, (parent.width - 2px) * root.clamped-progress);
+            border-radius: 3px;
+            background: root.has-track ? LunariaTheme.primary : LunariaTheme.outline-variant;
+            opacity: root.is-playing ? 0.92 : 0.68;
+        }
+    }
+
+    // Analog mixer fader cap
+    Rectangle {
+        width: root.cap-width;
+        height: 24px;
+        y: (parent.height - self.height) / 2;
+        x: root.clamped-progress * root.travel;
+        border-radius: 4px;
+        background: fader-ta.pressed
+            ? LunariaTheme.surface-container-highest
+            : (fader-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container);
+        border-width: 1.5px;
+        border-color: fader-ta.pressed || fader-ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline;
+        animate background, border-color { duration: 120ms; }
+
+        // Top bevel highlight
+        Rectangle {
+            x: 2px;
+            y: 2px;
+            width: parent.width - 4px;
+            height: 1.5px;
+            background: LunariaTheme.on-surface;
+            opacity: 0.25;
+        }
+
+        // Bottom bevel shadow
+        Rectangle {
+            x: 2px;
+            y: parent.height - 3.5px;
+            width: parent.width - 4px;
+            height: 1.5px;
+            background: #000000;
+            opacity: 0.35;
+        }
+
+        // Left & right tactile grip grooves
+        Rectangle {
+            x: 3.5px;
+            y: 6px;
+            width: 1.5px;
+            height: 12px;
+            border-radius: 1px;
+            background: LunariaTheme.outline-variant;
+        }
+        Rectangle {
+            x: parent.width - 5px;
+            y: 6px;
+            width: 1.5px;
+            height: 12px;
+            border-radius: 1px;
+            background: LunariaTheme.outline-variant;
+        }
+
+        // Center precision indicator line
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: 4px;
+            width: 2.5px;
+            height: 16px;
+            border-radius: 1px;
+            background: root.has-track ? LunariaTheme.primary : LunariaTheme.outline;
+        }
+    }
+
+    fader-ta := TouchArea {
+        enabled: root.has-track;
+        mouse-cursor: root.has-track ? pointer : default;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.seek(max(0.0, min(1.0, (self.mouse-x - root.cap-width / 2) / root.travel)));
+            }
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.seek(max(0.0, min(1.0, (self.mouse-x - root.cap-width / 2) / root.travel)));
+            }
+        }
+
+        scroll-event(event) => {
+            if (root.has-track && event.delta-y != 0px) {
+                root.step-seek(event.delta-y > 0px ? 5000 : -5000);
+                return accept;
+            }
+            reject
+        }
+    }
+}
+
+export component AnalogVolumeFader inherits Rectangle {
+    in property <float> value: 1.0;
+    in property <bool> is-muted: false;
+    callback changed(float);
+    callback step(float);
+
+    private property <float> clamped: max(0.0, min(1.0, root.value));
+    private property <length> cap-width: 12px;
+    private property <length> travel: max(1px, root.width - root.cap-width);
+
+    height: 28px;
+    horizontal-stretch: 1;
+    clip: false;
+    accessible-role: slider;
+    accessible-label: "Master volume";
+
+    // 5 calibrated studio ticks
+    for tick-idx in 5: Rectangle {
+        private property <bool> is-major: tick-idx == 0 || tick-idx == 2 || tick-idx == 4;
+        x: (root.cap-width / 2) + (tick-idx / 4.0) * root.travel - 1px;
+        y: 0px;
+        width: 2px;
+        height: parent.height;
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: 1px;
+            width: is-major ? 1.5px : 1px;
+            height: is-major ? 4px : 2.5px;
+            background: is-major ? LunariaTheme.outline : LunariaTheme.outline-variant;
+            opacity: 0.85;
+        }
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: parent.height - self.height - 1px;
+            width: is-major ? 1.5px : 1px;
+            height: is-major ? 4px : 2.5px;
+            background: is-major ? LunariaTheme.outline : LunariaTheme.outline-variant;
+            opacity: 0.85;
+        }
+    }
+
+    // Recessed horizontal fader groove
+    Rectangle {
+        x: 5px;
+        width: max(1px, parent.width - 10px);
+        height: 6px;
+        y: (parent.height - self.height) / 2;
+        border-radius: 3px;
+        background: LunariaTheme.surface-container-lowest;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        clip: true;
+
+        Rectangle {
+            x: 1px;
+            y: 1px;
+            height: parent.height - 2px;
+            width: max(0px, (parent.width - 2px) * root.clamped);
+            border-radius: 2px;
+            background: root.is-muted ? LunariaTheme.outline : LunariaTheme.tertiary;
+        }
+    }
+
+    // Compact beveled analog fader cap
+    Rectangle {
+        width: root.cap-width;
+        height: 18px;
+        y: (parent.height - self.height) / 2;
+        x: root.clamped * root.travel;
+        border-radius: 3px;
+        background: vol-ta.pressed || vol-ta.has-hover
+            ? LunariaTheme.surface-container-highest
+            : LunariaTheme.surface-container;
+        border-width: 1.5px;
+        border-color: vol-ta.pressed || vol-ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline;
+        animate background, border-color { duration: 120ms; }
+
+        Rectangle {
+            x: 1.5px;
+            y: 1.5px;
+            width: parent.width - 3px;
+            height: 1px;
+            background: LunariaTheme.on-surface;
+            opacity: 0.25;
+        }
+
+        Rectangle {
+            x: 1.5px;
+            y: parent.height - 2.5px;
+            width: parent.width - 3px;
+            height: 1px;
+            background: #000000;
+            opacity: 0.35;
+        }
+
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: 4px;
+            width: 2px;
+            height: 10px;
+            border-radius: 1px;
+            background: root.is-muted ? LunariaTheme.outline : LunariaTheme.tertiary;
+        }
+    }
+
+    vol-ta := TouchArea {
+        mouse-cursor: pointer;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                root.changed(max(0.0, min(1.0, (self.mouse-x - root.cap-width / 2) / root.travel)));
+            }
+        }
+
+        moved => {
+            if (self.pressed) {
+                root.changed(max(0.0, min(1.0, (self.mouse-x - root.cap-width / 2) / root.travel)));
+            }
+        }
+
+        scroll-event(event) => {
+            if (event.delta-y != 0px) {
+                root.step(event.delta-y > 0px ? 0.05 : -0.05);
+                return accept;
+            }
+            reject
+        }
+    }
+}
+
+export component VerticalEqMixerFader inherits Rectangle {
+    in property <float> gain-db: 0.0;
+    in property <bool> eq-enabled: false;
+    callback gain-changed(float);
+
+    private property <float> clamped-db: max(-12.0, min(12.0, root.gain-db));
+    private property <float> norm: (12.0 - root.clamped-db) / 24.0;
+    private property <length> cap-height: 16px;
+    private property <length> travel: max(1px, root.height - root.cap-height);
+
+    vertical-stretch: 1;
+    preferred-width: 0px;
+    min-width: 0px;
+    clip: false;
+    accessible-role: slider;
+    accessible-label: "Equalizer band gain";
+
+    // 9 calibrated vertical dB ticks flanking the slot (tick 4 = 0 dB center)
+    for tick-idx in 9: Rectangle {
+        private property <bool> is-zero: tick-idx == 4;
+        private property <bool> is-major: tick-idx == 0 || tick-idx == 2 || tick-idx == 6 || tick-idx == 8;
+        x: 0px;
+        y: (root.cap-height / 2) + (tick-idx / 8.0) * root.travel - 1px;
+        width: parent.width;
+        height: 2px;
+
+        Rectangle {
+            x: (parent.width / 2) - 7px - self.width;
+            y: (parent.height - self.height) / 2;
+            width: is-zero ? 7px : (is-major ? 5px : 3px);
+            height: is-zero ? 1.5px : 1px;
+            background: is-zero ? LunariaTheme.primary : (is-major ? LunariaTheme.outline : LunariaTheme.outline-variant);
+            opacity: is-zero ? 0.95 : 0.85;
+        }
+
+        Rectangle {
+            x: (parent.width / 2) + 7px;
+            y: (parent.height - self.height) / 2;
+            width: is-zero ? 7px : (is-major ? 5px : 3px);
+            height: is-zero ? 1.5px : 1px;
+            background: is-zero ? LunariaTheme.primary : (is-major ? LunariaTheme.outline : LunariaTheme.outline-variant);
+            opacity: is-zero ? 0.95 : 0.85;
+        }
+    }
+
+    // Recessed vertical mixer groove with bipolar 0 dB fill
+    Rectangle {
+        width: 8px;
+        x: (parent.width - self.width) / 2;
+        y: 7px;
+        height: max(1px, parent.height - 14px);
+        border-radius: 4px;
+        background: LunariaTheme.surface-container-lowest;
+        border-width: 1px;
+        border-color: LunariaTheme.outline-variant;
+        clip: true;
+
+        // Center 0 dB hairline inside groove
+        Rectangle {
+            x: 1px;
+            width: parent.width - 2px;
+            height: 1px;
+            y: parent.height / 2;
+            background: LunariaTheme.outline;
+        }
+
+        // Bipolar fill radiating from 0 dB center
+        Rectangle {
+            x: 1px;
+            width: parent.width - 2px;
+            y: root.clamped-db >= 0.0
+                ? (parent.height / 2) - (root.clamped-db / 12.0) * (parent.height / 2 - 2px)
+                : (parent.height / 2);
+            height: (abs(root.clamped-db) / 12.0) * (parent.height / 2 - 2px);
+            border-radius: 2px;
+            background: root.eq-enabled ? LunariaTheme.primary : LunariaTheme.outline;
+            opacity: root.eq-enabled ? 0.88 : 0.55;
+        }
+    }
+
+    // Beveled horizontal mixer fader cap
+    Rectangle {
+        width: min(30px, max(18px, parent.width - 8px));
+        x: (parent.width - self.width) / 2;
+        height: root.cap-height;
+        y: root.norm * root.travel;
+        border-radius: 4px;
+        background: eq-ta.pressed || eq-ta.has-hover
+            ? LunariaTheme.surface-container-highest
+            : LunariaTheme.surface-container;
+        border-width: 1.5px;
+        border-color: eq-ta.pressed || eq-ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline;
+        animate background, border-color { duration: 120ms; }
+
+        Rectangle {
+            x: 2px;
+            y: 1.5px;
+            width: parent.width - 4px;
+            height: 1px;
+            background: LunariaTheme.on-surface;
+            opacity: 0.25;
+        }
+
+        Rectangle {
+            x: 2px;
+            y: parent.height - 2.5px;
+            width: parent.width - 4px;
+            height: 1px;
+            background: #000000;
+            opacity: 0.35;
+        }
+
+        Rectangle {
+            x: 5px;
+            y: 3.5px;
+            width: parent.width - 10px;
+            height: 1px;
+            border-radius: 0.5px;
+            background: LunariaTheme.outline-variant;
+        }
+
+        Rectangle {
+            x: 5px;
+            y: parent.height - 4.5px;
+            width: parent.width - 10px;
+            height: 1px;
+            border-radius: 0.5px;
+            background: LunariaTheme.outline-variant;
+        }
+
+        Rectangle {
+            x: 3px;
+            y: (parent.height - self.height) / 2;
+            width: parent.width - 6px;
+            height: 2px;
+            border-radius: 1px;
+            background: root.eq-enabled ? LunariaTheme.primary : LunariaTheme.outline;
+        }
+    }
+
+    eq-ta := TouchArea {
+        property <bool> left-dragging: false;
+        mouse-cursor: pointer;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left) {
+                if (event.kind == PointerEventKind.down) {
+                    self.left-dragging = true;
+                    root.gain-changed(max(-12.0, min(12.0, 12.0 - ((self.mouse-y - root.cap-height / 2) / root.travel) * 24.0)));
+                } else if (event.kind == PointerEventKind.up || event.kind == PointerEventKind.cancel) {
+                    self.left-dragging = false;
+                }
+            } else if (event.button == PointerEventButton.right && event.kind == PointerEventKind.down) {
+                self.left-dragging = false;
+                root.gain-changed(0.0);
+            }
+        }
+
+        moved => {
+            if (self.left-dragging && self.pressed) {
+                root.gain-changed(max(-12.0, min(12.0, 12.0 - ((self.mouse-y - root.cap-height / 2) / root.travel) * 24.0)));
+            }
+        }
+
+        double-clicked => {
+            self.left-dragging = false;
+            root.gain-changed(0.0);
+        }
+
+        scroll-event(event) => {
+            if (event.delta-y != 0px) {
+                root.gain-changed(max(-12.0, min(12.0, root.clamped-db + (event.delta-y > 0px ? 0.5 : -0.5))));
+                return accept;
+            }
+            reject
+        }
+    }
+}
+
+export component TonalActionButton inherits Rectangle {
+    in property <string> label;
+    in property <bool> filled: false;
+    in property <bool> busy: false;
+    in property <bool> enabled: true;
+    callback clicked();
+
+    height: 32px;
+    min-width: 58px;
+    border-radius: 16px;
+    border-width: btn-fs.has-focus ? 2px : 1px;
+    border-color: (btn-fs.has-focus || (btn-ta.has-hover && root.enabled && !root.busy))
+        ? LunariaTheme.primary
+        : (root.filled ? LunariaTheme.primary-container : LunariaTheme.outline-variant);
+    background: root.filled
+        ? LunariaTheme.primary-container
+        : (btn-ta.has-hover && root.enabled && !root.busy ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high);
+    opacity: root.enabled ? 1.0 : 0.45;
+    animate background, border-color { duration: 150ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+    accessible-role: button;
+    accessible-label: root.busy ? root.label + " (busy)" : root.label;
+    accessible-enabled: root.enabled && !root.busy;
+    accessible-action-default => {
+        if (root.enabled && !root.busy) {
+            root.clicked();
+        }
+    }
+
+    HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 11px;
+        alignment: center;
+
+        Text {
+            text: root.busy ? "Working..." : root.label;
+            accessible-role: none;
+            font-size: 11px;
+            font-weight: 700;
+            color: root.filled ? LunariaTheme.on-primary-container : LunariaTheme.on-surface;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+
+    btn-fs := FocusScope {
+        enabled: root.enabled && !root.busy;
+        key-pressed(event) => {
+            if ((event.text == Key.Return || event.text == " ") && root.enabled && !root.busy) {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+
+        btn-ta := TouchArea {
+            enabled: root.enabled && !root.busy;
+            mouse-cursor: root.enabled ? pointer : default;
+            clicked => { root.clicked(); }
+        }
+    }
+}
+
+export component PresetChip inherits Rectangle {
+    in property <string> label;
+    in property <bool> active;
+    callback clicked();
+
+    height: 26px;
+    min-width: 52px;
+    border-radius: 13px;
+    border-width: chip-fs.has-focus ? 2px : 1px;
+    border-color: (chip-fs.has-focus || root.active)
+        ? LunariaTheme.primary
+        : (chip-ta.has-hover ? LunariaTheme.outline : LunariaTheme.outline-variant);
+    background: root.active
+        ? LunariaTheme.secondary-container
+        : (chip-ta.has-hover ? LunariaTheme.surface-container-high : LunariaTheme.surface-container-low);
+    animate background, border-color { duration: 150ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-action-default => { root.clicked(); }
+
+    HorizontalLayout {
+        padding-left: 9px;
+        padding-right: 9px;
+        alignment: center;
+
+        Text {
+            text: root.label;
+            accessible-role: none;
+            font-size: 10px;
+            font-weight: root.active ? 700 : 600;
+            color: root.active ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+    }
+
+    chip-fs := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Return || event.text == " ") {
+                root.clicked();
+                return accept;
+            }
+            reject
+        }
+
+        chip-ta := TouchArea {
+            mouse-cursor: pointer;
+            clicked => { root.clicked(); }
+        }
+    }
+}
+
+export component LunariaTextField inherits Rectangle {
+    in-out property <string> text;
+    in property <string> placeholder: "";
+    in property <bool> enabled: true;
+    callback edited(string);
+    callback accepted(string);
+
+    public function focus-input() {
+        ti.focus();
+    }
+
+    height: 34px;
+    border-radius: 10px;
+    border-width: ti.has-focus ? 2px : 1px;
+    border-color: ti.has-focus ? LunariaTheme.primary : LunariaTheme.outline;
+    background: LunariaTheme.surface-container-low;
+    clip: true;
+
+    HorizontalLayout {
+        padding-left: 11px;
+        padding-right: 8px;
+        spacing: 6px;
+
+        Rectangle {
+            horizontal-stretch: 1;
+            clip: true;
+
+            if root.text == "": Text {
+                x: 0px;
+                width: parent.width;
+                height: parent.height;
+                text: root.placeholder;
+                accessible-role: none;
+                font-size: 12px;
+                font-weight: 500;
+                color: LunariaTheme.on-surface-variant;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            ti := TextInput {
+                x: 0px;
+                width: parent.width;
+                height: parent.height;
+                text <=> root.text;
+                enabled: root.enabled;
+                single-line: true;
+                font-size: 12px;
+                font-weight: 500;
+                color: LunariaTheme.on-surface;
+                selection-background-color: LunariaTheme.primary-container;
+                selection-foreground-color: LunariaTheme.on-primary-container;
+                vertical-alignment: center;
+                accessible-role: text-input;
+                accessible-label: root.placeholder != "" ? root.placeholder : "Text input";
+                edited => { root.edited(self.text); }
+                accepted => { root.accepted(self.text); }
+            }
+        }
+
+        if root.text != "" && root.enabled: Rectangle {
+            width: 20px;
+            height: 20px;
+            y: (parent.height - self.height) / 2;
+            border-radius: 10px;
+            background: clear-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+            accessible-role: button;
+            accessible-label: "Clear text";
+            accessible-action-default => {
+                root.text = "";
+                root.edited("");
+                ti.focus();
+            }
+
+            Text {
+                text: "×";
+                accessible-role: none;
+                font-size: 12px;
+                font-weight: 700;
+                color: LunariaTheme.on-surface-variant;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+
+            clear-ta := TouchArea {
+                mouse-cursor: pointer;
+                clicked => {
+                    root.text = "";
+                    root.edited("");
+                    ti.focus();
+                }
+            }
+        }
+    }
+}
+
+export component TrackListRow inherits Rectangle {
+    in property <TrackRow> track;
+    in property <bool> show-playlist-btn: false;
+    in property <bool> show-tag-btn: true;
+    callback play-clicked();
+    callback favorite-clicked();
+    callback queue-next-clicked();
+    callback add-to-playlist-clicked();
+    callback edit-tags-clicked();
+
+    height: 54px;
+
+    VerticalLayout {
+        padding-bottom: 5px;
+
+        Rectangle {
+            height: 49px;
+            clip: true;
+            border-radius: 11px;
+            background: root.track.is-playing
+                ? LunariaTheme.secondary-container
+                : (play-ta.has-hover ? LunariaTheme.surface-container-high : LunariaTheme.surface-container-low);
+            border-width: 1px;
+            border-color: root.track.is-playing
+                ? LunariaTheme.primary
+                : (play-ta.has-hover ? LunariaTheme.outline : LunariaTheme.outline-variant);
+            animate background, border-color { duration: 130ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+
+            HorizontalLayout {
+                padding-left: 10px;
+                padding-right: 8px;
+                spacing: 8px;
+
+                // Clickable Track Metadata Region
+                Rectangle {
+                    horizontal-stretch: 1;
+                    preferred-width: 0px;
+                    min-width: 0px;
+                    clip: true;
+
+                    HorizontalLayout {
+                        spacing: 8px;
+
+                        Rectangle {
+                            width: 6px;
+                            height: 20px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 3px;
+                            background: root.track.is-playing ? LunariaTheme.primary : transparent;
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            preferred-width: 0px;
+                            min-width: 0px;
+                            clip: true;
+
+                            VerticalLayout {
+                                width: 100%;
+                                height: 100%;
+                                alignment: center;
+                                spacing: 2px;
+
+                                HorizontalLayout {
+                                    spacing: 6px;
+                                    MarqueeText {
+                                        text: root.track.title;
+                                        font-size: 12px;
+                                        font-weight: 700;
+                                        text-color: root.track.is-playing ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface;
+                                        active: root.track.is-playing && MarqueeClock.active;
+                                        initial-delay-sec: 1.8;
+                                    }
+
+                                    if root.track.is-hi-res: Rectangle {
+                                        height: 16px;
+                                        width: 44px;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: 4px;
+                                        background: LunariaTheme.primary-container;
+                                        Text {
+                                            text: "HI-RES";
+                                            font-size: 8px;
+                                            font-weight: 700;
+                                            color: LunariaTheme.on-primary-container;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+
+                                    if root.track.is-cue: Rectangle {
+                                        height: 16px;
+                                        width: 28px;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: 4px;
+                                        background: LunariaTheme.surface-container-highest;
+                                        Text {
+                                            text: "CUE";
+                                            font-size: 8px;
+                                            font-weight: 700;
+                                            color: LunariaTheme.primary;
+                                            horizontal-alignment: center;
+                                            vertical-alignment: center;
+                                        }
+                                    }
+                                }
+
+                                Text {
+                                    text: root.track.artist + " • " + root.track.album + " • " + root.track.quality-badge;
+                                    font-size: 10px;
+                                    font-weight: 500;
+                                    color: root.track.is-playing ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+                                    overflow: elide;
+                                }
+                            }
+                        }
+
+                        Text {
+                            text: root.track.duration-text;
+                            font-size: 10px;
+                            font-weight: 700;
+                            color: root.track.is-playing ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+                            vertical-alignment: center;
+                            width: 44px;
+                            horizontal-alignment: right;
+                        }
+                    }
+
+                    play-ta := TouchArea {
+                        mouse-cursor: pointer;
+                        clicked => { root.play-clicked(); }
+                    }
+                    accessible-role: button;
+                    accessible-label: "Play " + root.track.title + " by " + root.track.artist;
+                    accessible-action-default => { root.play-clicked(); }
+                }
+
+                // Inline Row Actions (separate from play TouchArea for crisp targeting)
+                HorizontalLayout {
+                    spacing: 4px;
+                    y: (parent.height - self.height) / 2;
+                    height: 26px;
+
+                    Rectangle {
+                        width: 26px;
+                        height: 26px;
+                        border-radius: 8px;
+                        background: fav-btn-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                        border-width: 1px;
+                        border-color: fav-btn-ta.has-hover ? LunariaTheme.primary : transparent;
+                        animate background, border-color { duration: 120ms; }
+                        accessible-role: button;
+                        accessible-label: root.track.is-favorite ? "Remove from favorites: " + root.track.title : "Add to favorites: " + root.track.title;
+                        accessible-action-default => { root.favorite-clicked(); }
+                        Text {
+                            text: root.track.is-favorite ? "♥" : "♡";
+                            accessible-role: none;
+                            font-size: 12px;
+                            color: root.track.is-favorite ? LunariaTheme.primary : LunariaTheme.on-surface-variant;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        fav-btn-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.favorite-clicked(); }
+                        }
+                    }
+
+                    Rectangle {
+                        width: 28px;
+                        height: 26px;
+                        border-radius: 8px;
+                        background: q-btn-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                        border-width: 1px;
+                        border-color: q-btn-ta.has-hover ? LunariaTheme.primary : transparent;
+                        animate background, border-color { duration: 120ms; }
+                        accessible-role: button;
+                        accessible-label: "Play next: " + root.track.title;
+                        accessible-action-default => { root.queue-next-clicked(); }
+                        Text {
+                            text: "+Q";
+                            accessible-role: none;
+                            font-size: 9px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface-variant;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        q-btn-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.queue-next-clicked(); }
+                        }
+                    }
+
+                    if root.show-playlist-btn: Rectangle {
+                        width: 30px;
+                        height: 26px;
+                        border-radius: 8px;
+                        background: pl-btn-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                        border-width: 1px;
+                        border-color: pl-btn-ta.has-hover ? LunariaTheme.primary : transparent;
+                        animate background, border-color { duration: 120ms; }
+                        accessible-role: button;
+                        accessible-label: "Add to playlist: " + root.track.title;
+                        accessible-action-default => { root.add-to-playlist-clicked(); }
+                        Text {
+                            text: "+PL";
+                            accessible-role: none;
+                            font-size: 9px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface-variant;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        pl-btn-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.add-to-playlist-clicked(); }
+                        }
+                    }
+
+                    if root.show-tag-btn && !root.track.is-cue: Rectangle {
+                        width: 30px;
+                        height: 26px;
+                        border-radius: 8px;
+                        background: tag-btn-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                        border-width: 1px;
+                        border-color: tag-btn-ta.has-hover ? LunariaTheme.primary : transparent;
+                        animate background, border-color { duration: 120ms; }
+                        accessible-role: button;
+                        accessible-label: "Edit tags: " + root.track.title;
+                        accessible-action-default => { root.edit-tags-clicked(); }
+                        Text {
+                            text: "Tag";
+                            accessible-role: none;
+                            font-size: 9px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface-variant;
+                            horizontal-alignment: center;
+                            vertical-alignment: center;
+                        }
+                        tag-btn-ta := TouchArea {
+                            mouse-cursor: pointer;
+                            clicked => { root.edit-tags-clicked(); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+export component LunariaScrollBar inherits Rectangle {
+    in property <length> viewport-height;
+    in property <length> content-height;
+    in-out property <length> content-y;
+
+    private property <length> max-scroll: max(0px, root.content-height - root.viewport-height);
+    private property <length> thumb-height: root.content-height <= 0px
+        ? 0px
+        : max(28px, min(root.height, root.height * (root.viewport-height / max(root.content-height, 1px))));
+    private property <length> scrollable-track: max(1px, root.height - root.thumb-height);
+
+    visible: root.max-scroll > 1px;
+    width: 8px;
+    clip: true;
+
+    track := Rectangle {
+        x: 1px;
+        y: 0px;
+        width: 6px;
+        height: parent.height;
+        border-radius: 3px;
+        background: LunariaTheme.surface-container-highest;
+        opacity: ta.has-hover || ta.pressed ? 0.50 : 0.0;
+        animate opacity { duration: 150ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+    }
+
+    thumb := Rectangle {
+        width: ta.has-hover || ta.pressed ? 6px : 4px;
+        x: (parent.width - self.width) / 2;
+        height: root.thumb-height;
+        y: root.max-scroll <= 0px
+            ? 0px
+            : (root.height - self.height) * max(0.0, min(1.0, -root.content-y / root.max-scroll));
+        border-radius: self.width / 2;
+        border-width: 0px;
+        background: ta.pressed || ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline;
+        opacity: ta.pressed ? 1.0 : ta.has-hover ? 0.92 : 0.55;
+        animate width, background, opacity { duration: 150ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+    }
+
+    ta := TouchArea {
+        property <length> drag-start-scroll: 0px;
+        property <length> drag-start-y: 0px;
+        mouse-cursor: pointer;
+
+        pointer-event(event) => {
+            if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                if (self.mouse-y < thumb.y || self.mouse-y > thumb.y + thumb.height) {
+                    root.content-y = -max(
+                        0px,
+                        min(root.max-scroll, ((self.mouse-y - root.thumb-height / 2) / root.scrollable-track) * root.max-scroll)
+                    );
+                }
+                self.drag-start-scroll = -root.content-y;
+                self.drag-start-y = self.mouse-y;
+            }
+        }
+
+        moved => {
+            if (self.pressed && root.max-scroll > 0px) {
+                root.content-y = -max(
+                    0px,
+                    min(
+                        root.max-scroll,
+                        self.drag-start-scroll + ((self.mouse-y - self.drag-start-y) / root.scrollable-track) * root.max-scroll
+                    )
+                );
+            }
+        }
+
+        scroll-event(event) => {
+            if (event.delta-y != 0px && root.max-scroll > 0px) {
+                root.content-y = max(-root.max-scroll, min(0px, root.content-y + event.delta-y));
+                return accept;
+            }
+            reject
+        }
+    }
+}

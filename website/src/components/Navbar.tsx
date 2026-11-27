@@ -3,22 +3,28 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { List, Moon, Sun, X } from "@phosphor-icons/react";
-import { LumynMark } from "@/components/LumynMark";
+import { LunariaMark } from "@/components/LunariaMark";
 import { useAppPreferences } from "@/components/Providers";
 
 interface NavbarProps {
   isSubPage?: boolean;
+  latestTag?: string;
 }
 
 function supportsNativePopover(): boolean {
   return typeof HTMLElement !== "undefined" && Object.hasOwn(HTMLElement.prototype, "popover");
 }
 
-export function Navbar({ isSubPage = false }: NavbarProps) {
+export function Navbar({ isSubPage = false, latestTag = "v1.0.0" }: NavbarProps) {
   const { theme, toggleTheme, locale, setLocale, copy } = useAppPreferences();
   const [menuOpen, setMenuOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const mobileCtaLabel =
+    latestTag === "v1.0.0"
+      ? copy.hero.primaryCta
+      : copy.hero.primaryCta.replace("v1.0.0", latestTag);
 
   const navItems = isSubPage
     ? [{ href: "/", label: copy.privacyPage.backHome }]
@@ -64,31 +70,50 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
   }, [closeMenu]);
 
   useEffect(() => {
-    if (!menuOpen || supportsNativePopover()) return;
+    if (!menuOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setMenuOpen(false);
+        closeMenu();
         triggerRef.current?.focus();
       }
     };
 
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target) return;
-      if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
+    const handleFocusOut = (event: FocusEvent) => {
+      const nextTarget = event.relatedTarget as Node | null;
+      if (!nextTarget) return;
+      if (panelRef.current?.contains(nextTarget) || triggerRef.current?.contains(nextTarget)) {
         return;
       }
-      setMenuOpen(false);
+      closeMenu();
     };
 
     window.addEventListener("keydown", handleKeyDown);
-    document.addEventListener("pointerdown", handlePointerDown);
+    const panel = panelRef.current;
+    panel?.addEventListener("focusout", handleFocusOut);
+
+    if (!supportsNativePopover()) {
+      const handlePointerDown = (event: PointerEvent) => {
+        const target = event.target as Node | null;
+        if (!target) return;
+        if (panelRef.current?.contains(target) || triggerRef.current?.contains(target)) {
+          return;
+        }
+        setMenuOpen(false);
+      };
+      document.addEventListener("pointerdown", handlePointerDown);
+      return () => {
+        window.removeEventListener("keydown", handleKeyDown);
+        panel?.removeEventListener("focusout", handleFocusOut);
+        document.removeEventListener("pointerdown", handlePointerDown);
+      };
+    }
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
-      document.removeEventListener("pointerdown", handlePointerDown);
+      panel?.removeEventListener("focusout", handleFocusOut);
     };
-  }, [menuOpen]);
+  }, [menuOpen, closeMenu]);
 
   const handleMenuButtonClick = () => {
     if (supportsNativePopover()) {
@@ -101,7 +126,7 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
     <header className="site-header sticky top-0 z-40">
       <div className="mx-auto max-w-6xl">
         <nav
-          aria-label="Primary"
+          aria-label={copy.nav.primaryNavLabel}
           className="flex min-h-13 flex-wrap items-center justify-between gap-2 rounded-2xl px-2.5 py-1.5 backdrop-blur-md sm:min-h-14 sm:gap-3 sm:px-3 sm:py-2"
           style={{
             backgroundColor: "var(--surface-nav)",
@@ -110,25 +135,27 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
         >
           <Link
             href="/"
+            aria-current={!isSubPage ? "page" : undefined}
             className="flex min-h-11 shrink-0 items-center gap-2 rounded-xl px-1.5 text-inherit no-underline sm:gap-2.5 sm:px-2"
           >
-            <LumynMark className="h-7 w-7 shrink-0" />
-            <span className="title-3 whitespace-nowrap font-semibold tracking-tight text-[var(--text-primary)]">
-              Lumyn
+            <LunariaMark className="h-7 w-7 shrink-0" />
+            <span className="title-3 whitespace-nowrap font-semibold text-[var(--text-primary)]">
+              Lunaria
             </span>
           </Link>
 
-          <div className="hidden flex-wrap items-center gap-0.5 lg:flex xl:gap-1">
+          <ul className="hidden flex-wrap items-center gap-0.5 lg:flex xl:gap-1">
             {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="body-5 inline-flex min-h-11 items-center whitespace-nowrap rounded-xl px-2.5 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] xl:px-3"
-              >
-                {item.label}
-              </Link>
+              <li key={item.href}>
+                <Link
+                  href={item.href}
+                  className="body-5 inline-flex min-h-11 items-center whitespace-nowrap rounded-xl px-2.5 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)] hover:text-[var(--text-primary)] xl:px-3"
+                >
+                  {item.label}
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
 
           <div className="flex min-w-0 flex-wrap items-center gap-1.5 sm:gap-2">
             <div
@@ -146,6 +173,8 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
                   <button
                     key={lang}
                     type="button"
+                    lang={lang}
+                    aria-label={copy.nav.langNames[lang]}
                     onClick={() => setLocale(lang)}
                     aria-pressed={active}
                     className="caption-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2.5 uppercase transition-colors duration-200"
@@ -212,16 +241,19 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
               }}
             >
               <div className="flex flex-col gap-1.5">
-                {navItems.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={closeMenu}
-                    className="title-3 flex min-h-11 items-center rounded-xl px-3 py-2 text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)]"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                <ul className="flex flex-col gap-1.5">
+                  {navItems.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        onClick={closeMenu}
+                        className="title-3 flex min-h-11 items-center rounded-xl px-3 py-2 text-[var(--text-primary)] no-underline transition-colors duration-200 hover:bg-[var(--surface-raised)]"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
 
                 <div
                   className="mt-2 flex items-center justify-between gap-3 pt-3 sm:hidden"
@@ -245,6 +277,8 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
                         <button
                           key={lang}
                           type="button"
+                          lang={lang}
+                          aria-label={copy.nav.langNames[lang]}
                           onClick={() => setLocale(lang)}
                           aria-pressed={active}
                           className="caption-4 inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg px-2.5 uppercase transition-colors duration-200"
@@ -266,7 +300,7 @@ export function Navbar({ isSubPage = false }: NavbarProps) {
                     onClick={closeMenu}
                     className="btn-primary button-md mt-2 flex min-h-12 w-full items-center justify-center rounded-xl px-4 py-3 text-center no-underline md:hidden"
                   >
-                    {copy.hero.primaryCta}
+                    {mobileCtaLabel}
                   </a>
                 )}
               </div>

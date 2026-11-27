@@ -3,10 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import { ArrowDown } from "@phosphor-icons/react";
-import { LumynMark } from "@/components/LumynMark";
+import { LunariaMark } from "@/components/LunariaMark";
 import { useAppPreferences } from "@/components/Providers";
 import {
   GITHUB_ISSUES_URL,
+  GITHUB_LICENSE_URL,
   GITHUB_RELEASES_URL,
   GITHUB_REPO_URL,
 } from "@/lib/releases";
@@ -30,7 +31,7 @@ export function Footer({ latestTag = "v1.0.0", hideFinalCta = false }: FooterPro
     >
       <div className="mx-auto max-w-6xl">
         {!hideFinalCta && (
-          <div className="lumyn-card mb-10 flex flex-col items-start justify-between gap-5 rounded-2xl p-5 sm:mb-12 sm:p-8 md:flex-row md:items-center">
+          <div className="lunaria-card mb-10 flex flex-col items-start justify-between gap-5 rounded-2xl p-5 sm:mb-12 sm:p-8 md:flex-row md:items-center">
             <h2 className="heading-4 max-w-[520px] text-[var(--text-primary)]">
               {copy.footer.ctaHeading}
             </h2>
@@ -46,9 +47,9 @@ export function Footer({ latestTag = "v1.0.0", hideFinalCta = false }: FooterPro
 
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-center">
           <div className="flex items-start gap-3">
-            <LumynMark className="mt-0.5 h-6 w-6 shrink-0" />
+            <LunariaMark className="mt-0.5 h-6 w-6 shrink-0" />
             <div className="min-w-0">
-              <div className="title-4 text-[var(--text-primary)]">Lumyn</div>
+              <div className="title-4 text-[var(--text-primary)]">Lunaria</div>
               <p className="caption-2 mt-0.5 text-[var(--text-muted)]">
                 {copy.footer.note}
               </p>
@@ -71,6 +72,14 @@ export function Footer({ latestTag = "v1.0.0", hideFinalCta = false }: FooterPro
               className="body-5 inline-flex min-h-11 items-center rounded-lg px-2 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:text-[var(--accent)]"
             >
               {copy.footer.links.releases}
+            </a>
+            <a
+              href={GITHUB_LICENSE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="body-5 inline-flex min-h-11 items-center rounded-lg px-2 py-2 text-[var(--text-secondary)] no-underline transition-colors duration-200 hover:text-[var(--accent)]"
+            >
+              {copy.footer.links.license}
             </a>
             <Link
               href="/privacy"

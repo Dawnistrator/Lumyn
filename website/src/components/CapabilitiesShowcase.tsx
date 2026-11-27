@@ -1,15 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import Image from "next/image";
 import { Check } from "@phosphor-icons/react";
 import { useAppPreferences } from "@/components/Providers";
 
 export function CapabilitiesShowcase() {
   const { copy } = useAppPreferences();
   const [activeScreenIndex, setActiveScreenIndex] = useState(0);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
 
   const screens = copy.capabilities.screens;
   const activeScreen = screens[activeScreenIndex] ?? screens[0];
+
+  const handleTabKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, idx: number) => {
+    let nextIdx: number | null = null;
+    if (event.key === "ArrowRight") {
+      nextIdx = (idx + 1) % screens.length;
+    } else if (event.key === "ArrowLeft") {
+      nextIdx = (idx - 1 + screens.length) % screens.length;
+    } else if (event.key === "Home") {
+      nextIdx = 0;
+    } else if (event.key === "End") {
+      nextIdx = screens.length - 1;
+    }
+    if (nextIdx === null) return;
+    event.preventDefault();
+    setActiveScreenIndex(nextIdx);
+    tabRefs.current[nextIdx]?.focus();
+  };
 
   return (
     <section
@@ -32,7 +51,7 @@ export function CapabilitiesShowcase() {
           <div className="flex min-w-0 flex-col items-center md:col-span-5">
             <div
               role="tablist"
-              aria-label="App screen selector"
+              aria-label={copy.capabilities.screenSelectorLabel}
               className="mb-5 grid w-full grid-cols-2 gap-2 sm:mb-6 sm:flex sm:flex-wrap sm:justify-center md:justify-start"
             >
               {screens.map((screen, idx) => {
@@ -40,10 +59,17 @@ export function CapabilitiesShowcase() {
                 return (
                   <button
                     key={screen.id}
+                    ref={(el) => {
+                      tabRefs.current[idx] = el;
+                    }}
+                    id={`cap-tab-${screen.id}`}
                     type="button"
                     role="tab"
                     aria-selected={selected}
+                    aria-controls={`cap-panel-${screen.id}`}
+                    tabIndex={selected ? 0 : -1}
                     onClick={() => setActiveScreenIndex(idx)}
+                    onKeyDown={(e) => handleTabKeyDown(e, idx)}
                     className="button-sm min-h-11 rounded-xl px-3 py-2 text-center transition-colors duration-200"
                     style={{
                       backgroundColor: selected
@@ -52,7 +78,7 @@ export function CapabilitiesShowcase() {
                       color: selected ? "var(--on-accent)" : "var(--text-secondary)",
                       border: selected
                         ? "1px solid var(--accent-fill)"
-                        : "1px solid var(--hairline)",
+                        : "1px solid var(--ui-border)",
                     }}
                   >
                     {screen.label}
@@ -69,19 +95,24 @@ export function CapabilitiesShowcase() {
                 boxShadow: "var(--shadow-device)",
               }}
             >
-              <img
+              <Image
                 src={activeScreen.src}
                 alt={activeScreen.alt}
                 width={activeScreen.width}
                 height={activeScreen.height}
-                loading="lazy"
+                sizes="(max-width: 639px) 240px, (max-width: 1023px) 260px, 290px"
                 className="block aspect-[720/1507] h-auto w-full rounded-2xl"
               />
             </div>
           </div>
 
           <div className="min-w-0 md:col-span-7">
-            <div className="lumyn-card rounded-2xl p-4 sm:p-6">
+            <div
+              id={`cap-panel-${activeScreen.id}`}
+              role="tabpanel"
+              aria-labelledby={`cap-tab-${activeScreen.id}`}
+              className="lunaria-card rounded-2xl p-4 sm:p-6"
+            >
               <h3 className="heading-5 text-[var(--text-primary)]">
                 {activeScreen.title}
               </h3>
@@ -93,7 +124,7 @@ export function CapabilitiesShowcase() {
                 {activeScreen.specs.map((spec) => (
                   <li
                     key={spec}
-                    className="body-5 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[var(--text-primary)] lumyn-raised"
+                    className="body-5 inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[var(--text-primary)] lunaria-raised"
                   >
                     <Check
                       size={15}
@@ -107,9 +138,9 @@ export function CapabilitiesShowcase() {
             </div>
 
             <div className="mt-8">
-              <p className="body-5 text-[var(--text-muted)]">
+              <h3 className="body-5 text-[var(--text-muted)]">
                 {copy.capabilities.pillarsHeading}
-              </p>
+              </h3>
               <div
                 className="mt-3 divide-y"
                 style={{ borderColor: "var(--hairline)" }}

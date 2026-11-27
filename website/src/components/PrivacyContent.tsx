@@ -13,7 +13,7 @@ export function PrivacyContent() {
   return (
     <div className="flex min-h-dvh flex-col">
       <Navbar isSubPage />
-      <main id="main-content" className="flex-1 px-4 py-10 sm:px-6 md:py-16">
+      <main id="main-content" tabIndex={-1} className="flex-1 px-4 py-10 sm:px-6 md:py-16">
         <div className="mx-auto max-w-3xl">
           <Link
             href="/"
@@ -35,7 +35,7 @@ export function PrivacyContent() {
 
           <div className="mt-8 space-y-5 sm:mt-10 sm:space-y-6">
             {copy.privacyPage.sections.map((section) => (
-              <article key={section.heading} className="lumyn-card min-w-0 rounded-2xl p-4 sm:p-6">
+              <article key={section.heading} className="lunaria-card min-w-0 rounded-2xl p-4 sm:p-6">
                 <h2 className="title-2 text-[var(--text-primary)]">
                   {section.heading}
                 </h2>

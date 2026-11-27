@@ -15,6 +15,7 @@ export function NotFoundContent() {
       <Navbar isSubPage />
       <main
         id="main-content"
+        tabIndex={-1}
         className="flex flex-1 items-center px-4 py-12 sm:px-6 md:py-16"
       >
         <div className="mx-auto w-full max-w-xl">

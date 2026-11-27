@@ -1,0 +1,23 @@
+[package]
+name = "lunaria-audio"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+arc-swap = { workspace = true }
+crossbeam-channel = { workspace = true }
+lunaria-dsp = { workspace = true }
+lunaria-model = { workspace = true }
+rtrb = { workspace = true }
+rubato = { workspace = true }
+symphonia = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[target.'cfg(windows)'.dependencies]
+wasapi = { workspace = true }
+
+[lints]
+workspace = true

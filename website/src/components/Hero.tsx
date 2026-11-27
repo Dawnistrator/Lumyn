@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Image from "next/image";
 import { ArrowDown, ArrowUpRight } from "@phosphor-icons/react";
 import { useAppPreferences } from "@/components/Providers";
 import { GITHUB_REPO_URL } from "@/lib/releases";
@@ -62,14 +63,13 @@ export function Hero({ latestTag }: HeroProps) {
               boxShadow: "var(--shadow-device)",
             }}
           >
-            <img
+            <Image
               src="/screenshots/now-playing.png"
               alt={copy.hero.heroImageAlt}
               width={720}
               height={1507}
-              fetchPriority="high"
-              loading="eager"
-              decoding="sync"
+              priority
+              sizes="(max-width: 639px) 240px, (max-width: 767px) 264px, (max-width: 1023px) 272px, 310px"
               className="block aspect-[720/1507] h-auto w-full rounded-2xl"
             />
           </div>

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.core.mediascanner"
+    namespace = "com.lunaria.core.mediascanner"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

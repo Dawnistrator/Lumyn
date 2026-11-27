@@ -17,10 +17,10 @@ if (keystorePropsFile.isFile) {
 fun releaseProp(propKey: String, envKey: String): String =
     (keystoreProps.getProperty(propKey) ?: System.getenv(envKey) ?: "").trim()
 
-val releaseStorePath = releaseProp("storeFile", "LUMYN_KEYSTORE_PATH")
-val releaseStorePassword = releaseProp("storePassword", "LUMYN_KEYSTORE_PASSWORD")
-val releaseKeyAlias = releaseProp("keyAlias", "LUMYN_KEY_ALIAS")
-val releaseKeyPassword = releaseProp("keyPassword", "LUMYN_KEY_PASSWORD")
+val releaseStorePath = releaseProp("storeFile", "LUNARIA_KEYSTORE_PATH")
+val releaseStorePassword = releaseProp("storePassword", "LUNARIA_KEYSTORE_PASSWORD")
+val releaseKeyAlias = releaseProp("keyAlias", "LUNARIA_KEY_ALIAS")
+val releaseKeyPassword = releaseProp("keyPassword", "LUNARIA_KEY_PASSWORD")
 val releaseStoreFile = releaseStorePath.takeIf { it.isNotEmpty() }?.let { rootProject.file(it) }
 val hasReleaseSigning = releaseStoreFile?.isFile == true &&
     releaseStorePassword.isNotEmpty() &&
@@ -35,12 +35,12 @@ val isReleaseApkBuild = gradle.startParameter.taskNames.any {
 }
 
 android {
-    namespace = "com.lumyn.music"
+    namespace = "com.lunaria.music"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 
     defaultConfig {
-        applicationId = "com.lumyn.music"
+        applicationId = "com.lunaria.music"
         minSdk = 26
         targetSdk = 36
         versionCode = 1

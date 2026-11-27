@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.feature.equalizer"
+    namespace = "com.lunaria.feature.equalizer"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

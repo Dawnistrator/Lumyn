@@ -1,13 +1,13 @@
-# Lumyn Web Design System
+# Lunaria Web Design System
 
 ## Direction
-- **Product:** Offline Hi-Res Android music player for local FLAC, WAV, ALAC, and MP3 libraries with a 32-bit float DSP chain, bit-perfect USB DAC output, and zero network permissions.
+- **Product:** Offline Hi-Res Android and Windows music player for local FLAC, WAV, ALAC, and MP3 libraries with a 32-bit float DSP chain, bit-perfect USB DAC output, and zero network permissions.
 - **Character:** Calm, exact, tactile (audio studio instrumentation rather than generic SaaS).
-- **World:** Dark obsidian slate tinted toward deep studio teal (`#0B1417`) anchored by Lumyn's native seed color (`#0E6178`), paired with an honest daytime light slate mode (`#F5FAFC`).
+- **World:** Dark obsidian slate tinted toward deep studio indigo (`#0D101B`) anchored by Lunaria's native seed color (`#32428A`), paired with a crisp daytime light slate mode (`#F5F7FC`).
 - **Moments:**
   1. Interactive Audio Signal Path switcher (`DSP 32-bit Float` vs `Purist Bit-Perfect`) detailing each real stage from local file to DAC.
-  2. Live APK selector (`arm64-v8a`, `universal`, `armeabi-v7a`, `x86_64`, `x86`) with real GitHub Release asset sizes, SHA-256 copy, and `aapt2` zero-permission proof.
-- **Signature:** Five curved audio-level bars from `ic_launcher_foreground.xml` used as the brand mark, favicon, and active pipeline indicator.
+  2. Live APK & Windows desktop asset selector (`arm64-v8a`, `universal`, `armeabi-v7a`, `x86_64`, `x86`, portable ZIP / NSIS installer) with GitHub Release asset sizes, SHA-256 copy, and `aapt2` zero-permission proof.
+- **Signature:** Concept B Lunaria Monogram (architectural rounded `L` cradling an upper-right crescent moon and pulse dot) from `ic_launcher_foreground.xml` used as the brand mark, favicon, and OG emblem.
 - **Dials:** `ENERGY 2 (Balanced)` / `RHYTHM 3 (Varied)` / `MOTION 2 (Purposeful transitions & word-by-word tagline reveal)`
 
 ## Color Tokens (WCAG AA Pre-Verified)
@@ -15,34 +15,34 @@
 ### Dark Theme (`[data-theme="dark"]`, Default)
 | Token | Hex / Value | Usage |
 | :--- | :--- | :--- |
-| `--bg` | `#0B1417` | Page background (`lumyn_window_background` night) |
-| `--surface` | `#121E22` | Cards, navigation sheet, code panels |
-| `--surface-raised` | `#1A2A30` | Active tabs, hover surfaces, raised controls |
-| `--text-primary` | `#F5FAFC` | Primary headlines and body (17.72:1 on `--bg`) |
-| `--text-secondary` | `#B3C7CE` | Supporting prose (10.63:1 on `--bg`) |
-| `--text-muted` | `#93ABB4` | Captions and metadata (7.74:1 on `--bg`) |
-| `--accent` | `#67C6DF` | Selected state highlights and links on dark surfaces (9.51:1 on `--bg`) |
-| `--accent-fill` | `#0E6178` | Brand seed solid fill (`LumynBrandSeedArgb`) |
-| `--on-accent` | `#F5FAFC` | Text over `#0E6178` fill (6.65:1) |
-| `--ui-border` | `#6B8892` | Interactive control borders (4.51:1 on `--surface`) |
-| `--hairline` | `rgba(245, 250, 252, 0.12)` | Subtle full-perimeter card dividers |
-| `--focus-ring` | `#67C6DF` | Keyboard focus ring |
+| `--bg` | `#0D101B` | Page background (`lunaria_window_background` night) |
+| `--surface` | `#141827` | Cards, navigation sheet, code panels |
+| `--surface-raised` | `#1C2236` | Active tabs, hover surfaces, raised controls |
+| `--text-primary` | `#F4F6FC` | Primary headlines and body (17.56:1 on `--bg`) |
+| `--text-secondary` | `#B8C0D9` | Supporting prose (10.46:1 on `--bg`) |
+| `--text-muted` | `#96A0BF` | Captions and metadata (7.30:1 on `--bg`) |
+| `--accent` | `#9AB0FF` | Selected state highlights and links on dark surfaces (9.06:1 on `--bg`) |
+| `--accent-fill` | `#32428A` | Brand seed solid fill (`LunariaBrandSeedArgb`) |
+| `--on-accent` | `#F4F6FC` | Text over `#32428A` fill (8.52:1) |
+| `--ui-border` | `#6D789C` | Interactive control borders (4.05:1 on `--surface`) |
+| `--hairline` | `rgba(244, 246, 252, 0.12)` | Subtle full-perimeter card dividers |
+| `--focus-ring` | `#9AB0FF` | Keyboard focus ring |
 
 ### Light Theme (`[data-theme="light"]`)
 | Token | Hex / Value | Usage |
 | :--- | :--- | :--- |
-| `--bg` | `#F5FAFC` | Page background (`lumyn_window_background` day) |
+| `--bg` | `#F5F7FC` | Page background (`lunaria_window_background` day) |
 | `--surface` | `#FFFFFF` | Cards and panels |
-| `--surface-raised` | `#E7F0F3` | Raised rows, active tabs, hover states |
-| `--text-primary` | `#0B171B` | Primary headlines and body (17.32:1 on `--bg`) |
-| `--text-secondary` | `#354A51` | Supporting prose (8.87:1 on `--bg`) |
-| `--text-muted` | `#496068` | Captions and metadata (6.32:1 on `--bg`) |
-| `--accent` | `#0B566B` | Accessible dark teal links/accents on light surfaces (7.80:1 on `--bg`) |
-| `--accent-fill` | `#0E6178` | Primary brand fill |
-| `--on-accent` | `#F5FAFC` | Text over `#0E6178` fill (6.65:1) |
-| `--ui-border` | `#6F868E` | Interactive control borders (3.83:1 on `--surface`) |
-| `--hairline` | `rgba(11, 23, 27, 0.12)` | Full-perimeter card borders |
-| `--focus-ring` | `#0B566B` | Keyboard focus ring |
+| `--surface-raised` | `#E8ECF7` | Raised rows, active tabs, hover states |
+| `--text-primary` | `#0E1224` | Primary headlines and body (17.33:1 on `--bg`) |
+| `--text-secondary` | `#373F5C` | Supporting prose (9.66:1 on `--bg`) |
+| `--text-muted` | `#4D5675` | Captions and metadata (6.75:1 on `--bg`) |
+| `--accent` | `#2A3B85` | Accessible dark indigo links/accents on light surfaces (9.50:1 on `--bg`) |
+| `--accent-fill` | `#32428A` | Primary brand fill |
+| `--on-accent` | `#F4F6FC` | Text over `#32428A` fill (8.52:1) |
+| `--ui-border` | `#6F7896` | Interactive control borders (4.37:1 on `--surface`) |
+| `--hairline` | `rgba(14, 18, 36, 0.12)` | Full-perimeter card borders |
+| `--focus-ring` | `#2A3B85` | Keyboard focus ring |
 
 ## Typography
 - **Primary (`--font-sans`):** `Geist` (clean geometric readability in English and Indonesian; chosen over Android-bundled monospace body to ensure long-form technical legibility).
@@ -52,7 +52,7 @@
 ## Spacing, Radius & Motion
 - **Spacing Scale:** Multiples of `4px` (`4, 8, 12, 16, 24, 32, 48, 64, 80, 96px`).
 - **Corner Radius (Nested Rule):** Inner radius = outer radius minus padding, minimum `4px`. Outer cards `rounded-2xl` (`16px`) / `rounded-3xl` (`24px`), nested controls `rounded-lg` (`8px`) / `rounded-xl` (`12px`).
-- **Icons:** `@phosphor-icons/react` (`16px`–`20px`), chosen for consistent crisp line geometry pairing with Lumyn's 5-bar geometric emblem.
+- **Icons:** `@phosphor-icons/react` (`16px`–`20px`), chosen for consistent crisp line geometry pairing with Lunaria's geometric monogram mark.
 - **Motion:** Single curve `cubic-bezier(0.22, 1, 0.36, 1)` animating only `transform` and `opacity`, honoring `prefers-reduced-motion: reduce`.
 
 ## Copy & Anti-Slop Rules

@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.core.audioengine"
+    namespace = "com.lunaria.core.audioengine"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

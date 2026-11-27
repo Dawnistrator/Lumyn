@@ -19,60 +19,58 @@ const geistMono = Geist_Mono({
 const resolvedHost =
   process.env.VERCEL_PROJECT_PRODUCTION_URL ||
   process.env.VERCEL_URL ||
-  "lumyn-web.vercel.app";
+  "lunarias.vercel.app";
 const siteUrl = `https://${resolvedHost}`;
+const isPreview = process.env.VERCEL_ENV === "preview";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "Lumyn: Offline Hi-Res Android Music Player",
-    template: "%s | Lumyn",
+    default: "Lunaria: Offline Hi-Res Android & Windows Music Player",
+    template: "%s | Lunaria",
   },
   description:
-    "An offline Android player for FLAC, WAV, ALAC, and MP3 libraries with a 32-bit float DSP chain, USB DAC bit-perfect output, and zero network permissions.",
+    "An offline Android and Windows player for FLAC, WAV, ALAC, and MP3 libraries with a 32-bit float DSP chain, USB DAC bit-perfect output, and zero network permissions.",
   alternates: {
     canonical: "/",
   },
   icons: {
-    icon: [
-      { url: "/favicon.svg", type: "image/svg+xml" },
-      { url: "/icon.svg", type: "image/svg+xml" },
-    ],
+    icon: [{ url: "/favicon.svg", type: "image/svg+xml" }],
   },
   openGraph: {
     type: "website",
+    locale: "en_US",
     url: "/",
-    siteName: "Lumyn",
-    title: "Lumyn: Offline Hi-Res Android Music Player",
+    siteName: "Lunaria",
+    title: "Lunaria: Offline Hi-Res Android & Windows Music Player",
     description:
-      "32-bit float DSP equalizer, bit-perfect USB DAC routing, in-file tag editing, and zero network permissions for local Android music libraries.",
+      "32-bit float DSP equalizer, bit-perfect USB DAC routing, in-file tag editing, and zero network permissions for local music libraries.",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Lumyn: Offline Hi-Res Android Music Player",
+    title: "Lunaria: Offline Hi-Res Android & Windows Music Player",
     description:
-      "Offline Hi-Res Android music player with 32-bit float DSP and zero network permissions.",
+      "Offline Hi-Res music player with 32-bit float DSP and zero network permissions.",
   },
-  robots: {
-    index: true,
-    follow: true,
-  },
+  robots: isPreview
+    ? { index: false, follow: false }
+    : { index: true, follow: true },
 };
 
 export const viewport: Viewport = {
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#0b1417" },
-    { media: "(prefers-color-scheme: light)", color: "#f5fafc" },
+    { media: "(prefers-color-scheme: dark)", color: "#0d101b" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fc" },
   ],
 };
 
 const themeInitScript = `
 (function() {
   try {
-    var t = localStorage.getItem('lumyn-web-theme');
+    var t = localStorage.getItem('lunaria-web-theme');
     document.documentElement.setAttribute('data-theme', (t === 'light' || t === 'dark') ? t : 'dark');
-    var l = localStorage.getItem('lumyn-web-locale');
+    var l = localStorage.getItem('lunaria-web-locale');
     if (l === 'id' || l === 'en') {
       document.documentElement.lang = l;
     }

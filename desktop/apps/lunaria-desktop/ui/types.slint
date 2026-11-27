@@ -1,0 +1,82 @@
+// Shared Slint data models bridging Rust SQLite / Audio / DSP state into UI views.
+
+export struct DeviceRow {
+    id: string,
+    name: string,
+    format-summary: string,
+    category: string,
+    is-default: bool,
+    is-selected: bool,
+}
+
+export struct SwatchRow {
+    name: string,
+    hex: string,
+    color-preview: color,
+    selected: bool,
+}
+
+export struct TrackRow {
+    track-id: int,
+    title: string,
+    artist: string,
+    album: string,
+    quality-badge: string,
+    duration-text: string,
+    is-hi-res: bool,
+    is-favorite: bool,
+    is-cue: bool,
+    is-playing: bool,
+}
+
+export struct GroupRow {
+    key-id: int,
+    key-text: string,
+    title: string,
+    subtitle: string,
+    meta-badge: string,
+    has-hi-res: bool,
+}
+
+export struct SmartPlaylistRow {
+    kind-index: int,
+    title: string,
+    subtitle: string,
+    count-text: string,
+}
+
+export struct QueueRow {
+    queue-index: int,
+    track-id: int,
+    title: string,
+    artist: string,
+    duration-text: string,
+    is-current: bool,
+}
+
+export struct LyricRow {
+    line-index: int,
+    timestamp-ms: int,
+    time-label: string,
+    text: string,
+    is-active: bool,
+}
+
+export struct EqBandRow {
+    band-index: int,
+    freq-label: string,
+    gain-db: float,
+    gain-text: string,
+}
+
+export struct StatArtistRow {
+    rank: int,
+    name: string,
+    plays-text: string,
+    duration-text: string,
+}
+
+export struct WatchedFolderRow {
+    index: int,
+    path: string,
+}

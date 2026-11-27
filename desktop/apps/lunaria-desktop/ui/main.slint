@@ -1,0 +1,1228 @@
+// Main Lunaria Desktop Window — Material Design 3 Expressive, Resizable (1180x724 default, min 1080x700), JetBrains Mono.
+
+import "../assets/fonts/jetbrains_mono_regular.ttf";
+import "../assets/fonts/jetbrains_mono_medium.ttf";
+import "../assets/fonts/jetbrains_mono_semibold.ttf";
+import "../assets/fonts/jetbrains_mono_bold.ttf";
+
+import { LunariaTheme, MarqueeClock } from "./theme.slint";
+import {
+    DeviceRow, EqBandRow, GroupRow, LyricRow, QueueRow, SmartPlaylistRow, StatArtistRow, SwatchRow,
+    TrackRow, WatchedFolderRow,
+} from "./types.slint";
+import { AnalogMixerFader, AnalogVolumeFader, MarqueeText, NavRailItem } from "./widgets.slint";
+import { SupportingPane } from "./supporting_pane.slint";
+import { TagEditorModal } from "./tag_editor.slint";
+import { EqualizerView, HomeView, LibraryView, SearchView, SettingsView, StatsView } from "./views.slint";
+
+export {
+    LunariaTheme,
+    MarqueeClock,
+    DeviceRow, SwatchRow, TrackRow, GroupRow, SmartPlaylistRow, QueueRow, LyricRow, EqBandRow,
+    StatArtistRow, WatchedFolderRow,
+}
+
+export component MainWindow inherits Window {
+    title: "Lunaria";
+    icon: @image-url("../assets/icon.svg");
+    no-frame: true;
+    preferred-width: 1180px;
+    preferred-height: 724px;
+    min-width: 1080px;
+    min-height: 700px;
+    background: LunariaTheme.surface;
+    animate background { duration: 280ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+    default-font-family: "JetBrains Mono";
+    default-font-weight: 500;
+    forward-focus: root-focus;
+
+    // Navigation & Pane Tabs
+    in-out property <int> active-nav: 0; // 0 Home, 1 Library, 2 Search, 3 Equalizer, 4 Stats, 5 Settings
+    in-out property <int> supporting-tab: 0; // 0 Now, 1 Queue, 2 Lyrics, 3 Signal Path
+    in-out property <string> nav-library-badge: "0";
+    in-out property <string> status-banner: "Lunaria ready. Add a music folder or open an audio file.";
+    in-out property <bool> is-maximized: false;
+
+    // Transport & Mixer Fader Seekbar State
+    in-out property <bool> has-track: false;
+    in-out property <bool> is-playing: false;
+    in-out property <bool> has-artwork: false;
+    in-out property <image> now-artwork;
+    in-out property <image> mini-artwork;
+    in-out property <string> track-title: "Ready to Play";
+    in-out property <string> track-artist: "Lunaria Local Studio";
+    in-out property <string> track-album: "Zero Network • Bit-Accurate";
+    in-out property <string> track-spec-badge: "FLAC / WASAPI";
+    in-out property <bool> current-is-favorite: false;
+    in-out property <bool> current-is-cue: false;
+    in-out property <float> playback-progress: 0.0;
+    in-out property <string> position-text: "00:00";
+    in-out property <string> duration-text: "00:00";
+    in-out property <float> volume-level: 1.0;
+    in-out property <bool> is-muted: false;
+    in-out property <string> volume-text: "100%";
+    in-out property <string> repeat-label: "Repeat: Off";
+    in-out property <bool> repeat-active: false;
+    in-out property <bool> shuffle-enabled: false;
+    in-out property <string> speed-label: "1.00x";
+    in-out property <string> sleep-label: "Sleep: Off";
+    in-out property <bool> sleep-active: false;
+
+    // Home
+    in-out property <string> library-summary: "0 tracks • 0 albums • 0 lossless";
+    in-out property <bool> scan-busy: false;
+    in-out property <bool> has-resume: false;
+    in-out property <string> resume-title: "";
+    in-out property <string> resume-subtitle: "";
+    in-out property <[SmartPlaylistRow]> smart-playlists: [];
+    in-out property <[TrackRow]> spotlight-tracks: [];
+
+    // Library
+    in-out property <int> library-subtab: 0;
+    in-out property <bool> library-in-drilldown: false;
+    in-out property <string> library-drilldown-title: "";
+    in-out property <bool> library-in-playlist-drilldown: false;
+    in-out property <string> sort-label: "Sort: Title";
+    in-out property <bool> show-playlist-add-btn: false;
+    in-out property <string> new-playlist-name: "";
+    in-out property <[TrackRow]> library-tracks: [];
+    in-out property <[GroupRow]> library-groups: [];
+
+    // Search
+    in-out property <string> search-query: "";
+    in-out property <bool> search-filter-hires: false;
+    in-out property <bool> search-filter-lossless: false;
+    in-out property <bool> search-filter-flac: false;
+    in-out property <bool> search-filter-favorites: false;
+    in-out property <string> search-result-summary: "Type to search title, artist, album, folder";
+    in-out property <[TrackRow]> search-results: [];
+
+    // Equalizer
+    in-out property <bool> eq-enabled: false;
+    in-out property <string> eq-preset-name: "Flat";
+    in-out property <int> eq-preset-idx: 0;
+    in-out property <image> bode-curve-image;
+    in-out property <[EqBandRow]> eq-bands: [];
+    in-out property <string> preamp-label: "0.0 dB";
+    in-out property <string> rg-mode-label: "ReplayGain: Off";
+    in-out property <bool> rg-active: false;
+    in-out property <string> rg-preamp-label: "0.0 dB";
+    in-out property <string> balance-label: "Center";
+    in-out property <bool> mono-audio: false;
+    in-out property <string> crossfade-label: "Crossfade: 0s";
+
+    // Stats
+    in-out property <string> kpi-total-plays: "0";
+    in-out property <string> kpi-listen-time: "0m";
+    in-out property <string> kpi-unique-tracks: "0";
+    in-out property <string> kpi-hires-share: "0%";
+    in-out property <[StatArtistRow]> stat-artists: [];
+    in-out property <[TrackRow]> stat-tracks: [];
+
+    // Settings & Theme
+    in-out property <int> output-mode-index: 0;
+    in-out property <[DeviceRow]> devices: [];
+    in-out property <bool> chime-busy: false;
+    in-out property <[WatchedFolderRow]> watched-folders: [];
+    in-out property <string> folder-filter-label: "Filter: Blacklist";
+    in-out property <bool> use-album-art-theme: true;
+    in-out property <[SwatchRow]> swatches: [];
+    in-out property <string> active-seed-hex: "#32428A";
+    in-out property <bool> use-software-renderer: false;
+    in-out property <bool> minimize-to-tray: true;
+    in-out property <bool> discord-rpc-enabled: true;
+    in-out property <string> discord-rpc-status-text: "Discord: Waiting for app";
+    in-out property <string> storage-mode-badge: "Standard AppData";
+    in-out property <string> db-path-text: "";
+    in-out property <string> app-version-label: "v0.1.0";
+
+    // Supporting Queue, Lyrics & Signal Path
+    in-out property <[QueueRow]> queue-rows: [];
+    in-out property <string> queue-summary: "0 tracks";
+    in-out property <[LyricRow]> lyric-rows: [];
+    in-out property <string> lyrics-source-label: "No local lyrics";
+    in-out property <bool> lyrics-synced: false;
+    in-out property <string> signal-source: "No track loaded";
+    in-out property <string> signal-decoder: "Symphonia Pure-Rust Decoder";
+    in-out property <string> signal-stage-1: "Flat (no active DSP filters)";
+    in-out property <string> signal-stage-2: "WASAPI Shared Event-Driven";
+    in-out property <string> signal-stage-3: "";
+    in-out property <string> signal-device: "Detecting WASAPI endpoints...";
+    in-out property <string> signal-output-spec: "32-bit / 48 kHz • 32-bit Float PCM";
+    in-out property <string> signal-honesty-badge: "DSP 32-bit Float";
+    in-out property <bool> signal-is-bit-perfect: false;
+
+    // Modal Tag Editor
+    in-out property <bool> tag-editor-open: false;
+    in-out property <string> tag-edit-title: "";
+    in-out property <string> tag-edit-artist: "";
+    in-out property <string> tag-edit-album: "";
+    in-out property <string> tag-edit-album-artist: "";
+    in-out property <string> tag-edit-track-no: "";
+    in-out property <string> tag-edit-disc-no: "";
+    in-out property <string> tag-edit-year: "";
+    in-out property <string> tag-edit-genre: "";
+    in-out property <string> tag-edit-file-path: "";
+    in-out property <string> tag-edit-cover-status: "Keep existing cover";
+    in-out property <bool> tag-edit-is-cue: false;
+    in-out property <bool> tag-edit-busy: false;
+    in-out property <string> tag-edit-error: "";
+
+    // Callbacks
+    callback toggle-theme();
+    callback toggle-album-art-theme();
+    callback select-seed(int);
+    callback toggle-software-renderer();
+    callback toggle-minimize-to-tray();
+    callback toggle-discord-rpc();
+
+    callback open-audio-file();
+    callback add-watched-folder();
+    callback remove-watched-folder(int);
+    callback rescan-library();
+    callback cycle-folder-filter-mode();
+    callback resume-session();
+    callback open-smart-playlist(int);
+
+    callback play-spotlight-track(int);
+    callback favorite-spotlight-track(int);
+    callback queue-spotlight-track(int);
+    callback edit-spotlight-tags(int);
+
+    callback select-library-subtab(int);
+    callback cycle-sort-order();
+    callback play-all-library();
+    callback shuffle-all-library();
+    callback exit-library-drilldown();
+    callback open-library-group(int);
+    callback play-library-track(int);
+    callback favorite-library-track(int);
+    callback queue-library-track(int);
+    callback add-library-track-to-playlist(int);
+    callback edit-library-track-tags(int);
+    callback create-playlist(string);
+    callback delete-current-playlist();
+    callback export-current-playlist();
+    callback import-m3u-playlist();
+
+    callback search-query-changed(string);
+    callback toggle-search-chip(int);
+    callback play-search-track(int);
+    callback favorite-search-track(int);
+    callback queue-search-track(int);
+    callback add-search-track-to-playlist(int);
+    callback edit-search-track-tags(int);
+
+    callback eq-toggle-enabled();
+    callback eq-import-autoeq();
+    callback eq-reset-flat();
+    callback eq-select-preset(int);
+    callback eq-set-band-gain(int, float);
+    callback eq-step-preamp(float);
+    callback eq-cycle-replay-gain();
+    callback eq-step-rg-preamp(float);
+    callback eq-cycle-balance();
+    callback eq-toggle-mono();
+    callback eq-cycle-crossfade();
+
+    callback play-stat-track(int);
+    callback favorite-stat-track(int);
+    callback queue-stat-track(int);
+
+    callback select-output-mode(int);
+    callback select-device(int);
+    callback refresh-devices();
+    callback play-test-chime();
+
+    callback toggle-play-pause();
+    callback previous-track();
+    callback next-track();
+    callback stop-playback();
+    callback seek-ratio(float);
+    callback seek-relative-ms(int);
+    callback set-volume(float);
+    callback step-volume(float);
+    callback toggle-mute();
+    callback toggle-current-favorite();
+    callback cycle-repeat();
+    callback toggle-shuffle();
+    callback cycle-speed();
+    callback cycle-sleep-timer();
+
+    callback play-queue-index(int);
+    callback move-queue-item(int, int);
+    callback remove-queue-item(int);
+    callback clear-queue();
+    callback seek-lyric-ms(int);
+
+    callback open-current-tag-editor();
+    callback tag-editor-pick-cover();
+    callback tag-editor-remove-cover();
+    callback tag-editor-save();
+    callback tag-editor-cancel();
+
+    callback start-window-drag();
+    callback minimize-window();
+    callback toggle-maximize-window();
+    callback close-window();
+    callback dispatch-shell-commands();
+    callback sync-telemetry();
+
+    root-focus := FocusScope {
+        width: 100%;
+        height: 100%;
+
+        capture-key-pressed(event) => {
+            if (root.tag-editor-open) {
+                if (event.text == Key.Escape) {
+                    root.tag-editor-cancel();
+                    return accept;
+                }
+                return reject;
+            }
+            if (event.modifiers.control) {
+                if (event.text == "k" || event.text == "K") {
+                    root.active-nav = 2;
+                    search-view.focus-search();
+                    return accept;
+                }
+                if (event.text == "l" || event.text == "L") {
+                    root.supporting-tab = 2;
+                    return accept;
+                }
+                if (event.text == "e" || event.text == "E") {
+                    root.active-nav = 3;
+                    return accept;
+                }
+                if (event.text == "q" || event.text == "Q") {
+                    root.supporting-tab = 1;
+                    return accept;
+                }
+                if (event.text == "i" || event.text == "I") {
+                    root.supporting-tab = 3;
+                    return accept;
+                }
+                if (event.text == Key.LeftArrow) {
+                    root.previous-track();
+                    return accept;
+                }
+                if (event.text == Key.RightArrow) {
+                    root.next-track();
+                    return accept;
+                }
+                if (event.text == "o" || event.text == "O") {
+                    root.open-audio-file();
+                    return accept;
+                }
+            }
+            reject
+        }
+
+        key-pressed(event) => {
+            if (root.tag-editor-open) {
+                return reject;
+            }
+            if (event.text == " ") {
+                root.toggle-play-pause();
+                return accept;
+            }
+            if (!event.modifiers.control && (event.text == "f" || event.text == "F")) {
+                root.toggle-current-favorite();
+                return accept;
+            }
+            if (!event.modifiers.control && (event.text == "m" || event.text == "M")) {
+                root.toggle-mute();
+                return accept;
+            }
+            if (!event.modifiers.control && event.text == Key.LeftArrow) {
+                root.seek-relative-ms(-5000);
+                return accept;
+            }
+            if (!event.modifiers.control && event.text == Key.RightArrow) {
+                root.seek-relative-ms(5000);
+                return accept;
+            }
+            if (!event.modifiers.control && event.text == Key.UpArrow) {
+                root.step-volume(0.05);
+                return accept;
+            }
+            if (!event.modifiers.control && event.text == Key.DownArrow) {
+                root.step-volume(-0.05);
+                return accept;
+            }
+            reject
+        }
+
+        Rectangle {
+            width: 100%;
+            height: 100%;
+            background: LunariaTheme.surface;
+            border-width: 1px;
+            border-color: LunariaTheme.outline-variant;
+            clip: true;
+
+            VerticalLayout {
+                padding: 0px;
+                spacing: 0px;
+
+                // Integrated Frameless Studio Title Bar (36px)
+                Rectangle {
+                    height: 36px;
+                    background: LunariaTheme.surface-container;
+
+                    Rectangle {
+                        y: parent.height - 1px;
+                        width: parent.width;
+                        height: 1px;
+                        background: LunariaTheme.outline-variant;
+                    }
+
+                    HorizontalLayout {
+                        width: 100%;
+                        height: 100%;
+                        padding: 0px;
+                        spacing: 0px;
+
+                        // Draggable Title Bar Area (Logo + Name + Badge + Live Track)
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            preferred-width: 0px;
+                            min-width: 0px;
+                            height: parent.height;
+                            clip: true;
+
+                            TouchArea {
+                                pointer-event(event) => {
+                                    if (event.button == PointerEventButton.left && event.kind == PointerEventKind.down) {
+                                        root.start-window-drag();
+                                    }
+                                }
+                                double-clicked => { root.toggle-maximize-window(); }
+                            }
+
+                            HorizontalLayout {
+                                width: 100%;
+                                height: 100%;
+                                padding-left: 14px;
+                                padding-right: 10px;
+                                spacing: 10px;
+
+                                Image {
+                                    source: @image-url("../assets/icon.svg");
+                                    width: 18px;
+                                    height: 18px;
+                                    y: (parent.height - self.height) / 2;
+                                    image-fit: contain;
+                                }
+
+                                Text {
+                                    text: "LUNARIA";
+                                    font-size: 13px;
+                                    font-weight: 700;
+                                    letter-spacing: 1.2px;
+                                    color: LunariaTheme.on-surface;
+                                    vertical-alignment: center;
+                                }
+
+                                Rectangle {
+                                    horizontal-stretch: 1;
+                                    preferred-width: 0px;
+                                    min-width: 0px;
+                                }
+                            }
+                        }
+
+                        // Window Minimize, Maximize/Restore & Close Buttons anchored flush to top-right corner
+                        Rectangle {
+                            width: 136px;
+                            horizontal-stretch: 0;
+                            height: parent.height;
+
+                            HorizontalLayout {
+                                width: 100%;
+                                height: 100%;
+                                padding-left: 2px;
+                                padding-right: 6px;
+                                spacing: 4px;
+                                alignment: end;
+
+                                Rectangle {
+                                    width: 40px;
+                                    height: 26px;
+                                    y: (parent.height - self.height) / 2;
+                                    border-radius: 7px;
+                                    background: min-ta.has-hover ? LunariaTheme.surface-container-highest : transparent;
+                                    animate background { duration: 120ms; }
+                                    accessible-role: button;
+                                    accessible-label: "Minimize window";
+                                    accessible-action-default => { root.minimize-window(); }
+
+                                    Rectangle {
+                                        width: 10px;
+                                        height: 1.5px;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: 1px;
+                                        background: LunariaTheme.on-surface-variant;
+                                    }
+
+                                    min-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.minimize-window(); }
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: 40px;
+                                    height: 26px;
+                                    y: (parent.height - self.height) / 2;
+                                    border-radius: 7px;
+                                    background: max-ta.has-hover ? LunariaTheme.surface-container-highest : transparent;
+                                    animate background { duration: 120ms; }
+                                    accessible-role: button;
+                                    accessible-label: root.is-maximized ? "Restore window" : "Maximize window";
+                                    accessible-action-default => { root.toggle-maximize-window(); }
+
+                                    if !root.is-maximized: Rectangle {
+                                        width: 10px;
+                                        height: 9px;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+                                        border-radius: 2px;
+                                        border-width: 1.5px;
+                                        border-color: LunariaTheme.on-surface-variant;
+                                        background: transparent;
+                                    }
+
+                                    if root.is-maximized: Rectangle {
+                                        width: 11px;
+                                        height: 10px;
+                                        x: (parent.width - self.width) / 2;
+                                        y: (parent.height - self.height) / 2;
+
+                                        Rectangle {
+                                            x: 3px;
+                                            y: 0px;
+                                            width: 8px;
+                                            height: 7px;
+                                            border-radius: 1.5px;
+                                            border-width: 1.5px;
+                                            border-color: LunariaTheme.on-surface-variant;
+                                            background: transparent;
+                                        }
+                                        Rectangle {
+                                            x: 0px;
+                                            y: 3px;
+                                            width: 8px;
+                                            height: 7px;
+                                            border-radius: 1.5px;
+                                            border-width: 1.5px;
+                                            border-color: LunariaTheme.on-surface-variant;
+                                            background: max-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container;
+                                        }
+                                    }
+
+                                    max-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.toggle-maximize-window(); }
+                                    }
+                                }
+
+                                Rectangle {
+                                    width: 40px;
+                                    height: 26px;
+                                    y: (parent.height - self.height) / 2;
+                                    border-radius: 7px;
+                                    background: close-ta.has-hover ? #C42B1C : transparent;
+                                    animate background { duration: 120ms; }
+                                    accessible-role: button;
+                                    accessible-label: "Close window";
+                                    accessible-action-default => { root.close-window(); }
+
+                                    Text {
+                                        text: "×";
+                                        accessible-role: none;
+                                        font-size: 14px;
+                                        font-weight: 500;
+                                        color: close-ta.has-hover ? #FFFFFF : LunariaTheme.on-surface-variant;
+                                        horizontal-alignment: center;
+                                        vertical-alignment: center;
+                                    }
+
+                                    close-ta := TouchArea {
+                                        mouse-cursor: pointer;
+                                        clicked => { root.close-window(); }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                VerticalLayout {
+                    vertical-stretch: 1;
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 8px;
+                    padding-bottom: 12px;
+                    spacing: 10px;
+
+                    // Main 3-Zone Area
+                    HorizontalLayout {
+                        spacing: 10px;
+                        vertical-stretch: 1;
+
+                        // 1. Left Navigation Rail (196px)
+                        Rectangle {
+                            width: 196px;
+                            clip: true;
+                            border-radius: 16px;
+                            background: LunariaTheme.surface-container;
+                            border-width: 1px;
+                            border-color: LunariaTheme.outline-variant;
+
+                            VerticalLayout {
+                                padding: 12px;
+                                spacing: 6px;
+
+                                Text {
+                                    text: "Workspace";
+                                    font-size: 10px;
+                                    font-weight: 700;
+                                    color: LunariaTheme.on-surface-variant;
+                                }
+
+                        NavRailItem { label: "Home"; active: root.active-nav == 0; clicked => { root.active-nav = 0; } }
+                        NavRailItem { label: "Library"; badge: root.nav-library-badge; active: root.active-nav == 1; clicked => { root.active-nav = 1; } }
+                        NavRailItem { label: "Search"; active: root.active-nav == 2; clicked => { root.active-nav = 2; search-view.focus-search(); } }
+                        NavRailItem { label: "Equalizer"; active: root.active-nav == 3; clicked => { root.active-nav = 3; } }
+                        NavRailItem { label: "Stats"; active: root.active-nav == 4; clicked => { root.active-nav = 4; } }
+                        NavRailItem { label: "Settings"; active: root.active-nav == 5; clicked => { root.active-nav = 5; } }
+
+                        Rectangle { vertical-stretch: 1; }
+
+                        if root.scan-busy: Rectangle {
+                            height: 26px;
+                            border-radius: 8px;
+                            background: LunariaTheme.primary-container;
+                            Text {
+                                text: "Scanning folder...";
+                                font-size: 9px;
+                                font-weight: 700;
+                                color: LunariaTheme.on-primary-container;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                        }
+
+                        Rectangle {
+                            height: 34px;
+                            border-radius: 10px;
+                            background: theme-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container-high;
+                            border-width: 1px;
+                            border-color: theme-ta.has-hover ? LunariaTheme.outline : LunariaTheme.outline-variant;
+                            accessible-role: button;
+                            accessible-label: LunariaTheme.is-dark ? "Switch to light theme" : "Switch to dark theme";
+                            accessible-action-default => { root.toggle-theme(); }
+
+                            Text {
+                                text: LunariaTheme.is-dark ? "Mode: Dark Slate" : "Mode: Light Slate";
+                                accessible-role: none;
+                                font-size: 11px;
+                                font-weight: 700;
+                                color: LunariaTheme.on-surface;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+
+                            theme-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.toggle-theme(); }
+                            }
+                        }
+                    }
+                }
+
+                // 2. Center Main Workspace (~624px at default 1180px, shrinks cleanly to 524px at 1080px)
+                Rectangle {
+                    horizontal-stretch: 1;
+                    preferred-width: 624px;
+                    min-width: 524px;
+                    clip: true;
+                    border-radius: 16px;
+                    background: LunariaTheme.surface-container;
+                    border-width: 1px;
+                    border-color: LunariaTheme.outline-variant;
+
+                    VerticalLayout {
+                        padding: 14px;
+                        spacing: 8px;
+
+                        // Active Screen Content
+                        Rectangle {
+                            vertical-stretch: 1;
+                            clip: true;
+
+                            HomeView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 0;
+                                library-summary: root.library-summary;
+                                scan-busy: root.scan-busy;
+                                has-resume: root.has-resume;
+                                resume-title: root.resume-title;
+                                resume-subtitle: root.resume-subtitle;
+                                smart-playlists: root.smart-playlists;
+                                spotlight-tracks: root.spotlight-tracks;
+
+                                add-folder => { root.add-watched-folder(); }
+                                rescan-library => { root.rescan-library(); }
+                                resume-session => { root.resume-session(); }
+                                open-smart-playlist(kind) => { root.open-smart-playlist(kind); }
+                                play-spotlight-track(i) => { root.play-spotlight-track(i); }
+                                favorite-spotlight-track(i) => { root.favorite-spotlight-track(i); }
+                                queue-spotlight-track(i) => { root.queue-spotlight-track(i); }
+                                edit-spotlight-tags(i) => { root.edit-spotlight-tags(i); }
+                            }
+
+                            LibraryView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 1;
+                                active-subtab <=> root.library-subtab;
+                                in-drilldown: root.library-in-drilldown;
+                                drilldown-title: root.library-drilldown-title;
+                                in-playlist-drilldown: root.library-in-playlist-drilldown;
+                                sort-label: root.sort-label;
+                                show-playlist-add-btn: root.show-playlist-add-btn;
+                                scan-busy: root.scan-busy;
+                                new-playlist-name <=> root.new-playlist-name;
+                                track-rows: root.library-tracks;
+                                group-rows: root.library-groups;
+
+                                select-subtab(t) => { root.select-library-subtab(t); }
+                                cycle-sort => { root.cycle-sort-order(); }
+                                play-all => { root.play-all-library(); }
+                                shuffle-all => { root.shuffle-all-library(); }
+                                rescan-library => { root.rescan-library(); }
+                                exit-drilldown => { root.exit-library-drilldown(); }
+                                open-group(i) => { root.open-library-group(i); }
+                                play-track(i) => { root.play-library-track(i); }
+                                favorite-track(i) => { root.favorite-library-track(i); }
+                                queue-next-track(i) => { root.queue-library-track(i); }
+                                add-track-to-playlist(i) => { root.add-library-track-to-playlist(i); }
+                                edit-track-tags(i) => { root.edit-library-track-tags(i); }
+                                create-playlist(name) => { root.create-playlist(name); }
+                                delete-current-playlist => { root.delete-current-playlist(); }
+                                export-current-playlist => { root.export-current-playlist(); }
+                                import-m3u-playlist => { root.import-m3u-playlist(); }
+                            }
+
+                            search-view := SearchView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 2;
+                                query <=> root.search-query;
+                                filter-hires: root.search-filter-hires;
+                                filter-lossless: root.search-filter-lossless;
+                                filter-flac: root.search-filter-flac;
+                                filter-favorites: root.search-filter-favorites;
+                                result-summary: root.search-result-summary;
+                                results: root.search-results;
+                                show-playlist-add-btn: root.show-playlist-add-btn;
+
+                                query-changed(q) => { root.search-query-changed(q); }
+                                toggle-chip(c) => { root.toggle-search-chip(c); }
+                                play-result(i) => { root.play-search-track(i); }
+                                favorite-result(i) => { root.favorite-search-track(i); }
+                                queue-next-result(i) => { root.queue-search-track(i); }
+                                add-result-to-playlist(i) => { root.add-search-track-to-playlist(i); }
+                                edit-result-tags(i) => { root.edit-search-track-tags(i); }
+                            }
+
+                            EqualizerView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 3;
+                                eq-enabled: root.eq-enabled;
+                                active-preset-name: root.eq-preset-name;
+                                active-preset-idx: root.eq-preset-idx;
+                                bode-curve: root.bode-curve-image;
+                                bands: root.eq-bands;
+                                preamp-label: root.preamp-label;
+                                rg-mode-label: root.rg-mode-label;
+                                rg-active: root.rg-active;
+                                rg-preamp-label: root.rg-preamp-label;
+                                balance-label: root.balance-label;
+                                mono-audio: root.mono-audio;
+                                crossfade-label: root.crossfade-label;
+
+                                toggle-enabled => { root.eq-toggle-enabled(); }
+                                import-autoeq => { root.eq-import-autoeq(); }
+                                reset-flat => { root.eq-reset-flat(); }
+                                select-preset(i) => { root.eq-select-preset(i); }
+                                set-band-gain(b, g) => { root.eq-set-band-gain(b, g); }
+                                step-preamp(d) => { root.eq-step-preamp(d); }
+                                cycle-replay-gain => { root.eq-cycle-replay-gain(); }
+                                step-rg-preamp(d) => { root.eq-step-rg-preamp(d); }
+                                cycle-balance => { root.eq-cycle-balance(); }
+                                toggle-mono => { root.eq-toggle-mono(); }
+                                cycle-crossfade => { root.eq-cycle-crossfade(); }
+                            }
+
+                            StatsView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 4;
+                                kpi-total-plays: root.kpi-total-plays;
+                                kpi-listen-time: root.kpi-listen-time;
+                                kpi-unique-tracks: root.kpi-unique-tracks;
+                                kpi-hires-share: root.kpi-hires-share;
+                                top-artists: root.stat-artists;
+                                top-tracks: root.stat-tracks;
+
+                                play-top-track(i) => { root.play-stat-track(i); }
+                                favorite-top-track(i) => { root.favorite-stat-track(i); }
+                                queue-top-track(i) => { root.queue-stat-track(i); }
+                            }
+
+                            SettingsView {
+                                width: 100%;
+                                height: 100%;
+                                visible: root.active-nav == 5;
+                                output-mode-index: root.output-mode-index;
+                                devices: root.devices;
+                                chime-busy: root.chime-busy;
+                                watched-folders: root.watched-folders;
+                                folder-filter-label: root.folder-filter-label;
+                                use-album-art-theme: root.use-album-art-theme;
+                                swatches: root.swatches;
+                                active-seed-hex: root.active-seed-hex;
+                                use-software-renderer: root.use-software-renderer;
+                                minimize-to-tray: root.minimize-to-tray;
+                                discord-rpc-enabled: root.discord-rpc-enabled;
+                                discord-rpc-status-text: root.discord-rpc-status-text;
+                                storage-mode-badge: root.storage-mode-badge;
+                                db-path-text: root.db-path-text;
+                                app-version-label: root.app-version-label;
+
+                                select-output-mode(m) => { root.select-output-mode(m); }
+                                refresh-devices => { root.refresh-devices(); }
+                                select-device(i) => { root.select-device(i); }
+                                play-test-chime => { root.play-test-chime(); }
+                                open-single-file => { root.open-audio-file(); }
+                                add-watched-folder => { root.add-watched-folder(); }
+                                remove-watched-folder(i) => { root.remove-watched-folder(i); }
+                                rescan-library => { root.rescan-library(); }
+                                cycle-folder-filter-mode => { root.cycle-folder-filter-mode(); }
+                                toggle-theme => { root.toggle-theme(); }
+                                toggle-album-art-theme => { root.toggle-album-art-theme(); }
+                                select-seed(i) => { root.select-seed(i); }
+                                toggle-software-renderer => { root.toggle-software-renderer(); }
+                                toggle-minimize-to-tray => { root.toggle-minimize-to-tray(); }
+                                toggle-discord-rpc => { root.toggle-discord-rpc(); }
+                            }
+                        }
+
+                        // Compact Status Banner Strip
+                        Rectangle {
+                            height: 24px;
+                            border-radius: 7px;
+                            background: LunariaTheme.surface-container-high;
+                            clip: true;
+
+                            Text {
+                                x: 10px;
+                                width: parent.width - 20px;
+                                height: parent.height;
+                                text: root.status-banner;
+                                font-size: 10px;
+                                font-weight: 600;
+                                color: LunariaTheme.primary;
+                                vertical-alignment: center;
+                                overflow: elide;
+                            }
+                        }
+                    }
+                }
+
+                // 3. Right Supporting Pane (316px)
+                SupportingPane {
+                    active-tab <=> root.supporting-tab;
+                    has-track: root.has-track;
+                    has-artwork: root.has-artwork;
+                    now-artwork: root.now-artwork;
+                    track-title: root.track-title;
+                    track-artist: root.track-artist;
+                    track-album: root.track-album;
+                    track-spec-badge: root.track-spec-badge;
+                    is-favorite: root.current-is-favorite;
+                    is-cue-track: root.current-is-cue;
+                    repeat-label: root.repeat-label;
+                    repeat-active: root.repeat-active;
+                    shuffle-enabled: root.shuffle-enabled;
+                    speed-label: root.speed-label;
+                    sleep-label: root.sleep-label;
+                    sleep-active: root.sleep-active;
+
+                    queue-rows: root.queue-rows;
+                    queue-summary: root.queue-summary;
+                    lyric-rows: root.lyric-rows;
+                    lyrics-source-label: root.lyrics-source-label;
+                    lyrics-synced: root.lyrics-synced;
+
+                    signal-source: root.signal-source;
+                    signal-decoder: root.signal-decoder;
+                    signal-stage-1: root.signal-stage-1;
+                    signal-stage-2: root.signal-stage-2;
+                    signal-stage-3: root.signal-stage-3;
+                    signal-device: root.signal-device;
+                    signal-output-spec: root.signal-output-spec;
+                    signal-honesty-badge: root.signal-honesty-badge;
+                    signal-is-bit-perfect: root.signal-is-bit-perfect;
+
+                    toggle-favorite => { root.toggle-current-favorite(); }
+                    cycle-repeat => { root.cycle-repeat(); }
+                    toggle-shuffle => { root.toggle-shuffle(); }
+                    cycle-speed => { root.cycle-speed(); }
+                    cycle-sleep-timer => { root.cycle-sleep-timer(); }
+                    open-tag-editor => { root.open-current-tag-editor(); }
+                    play-queue-index(i) => { root.play-queue-index(i); }
+                    move-queue-item(a, b) => { root.move-queue-item(a, b); }
+                    remove-queue-item(i) => { root.remove-queue-item(i); }
+                    clear-queue => { root.clear-queue(); }
+                    seek-lyric-ms(ms) => { root.seek-lyric-ms(ms); }
+                }
+            }
+
+            // Persistent Real-Time Transport Bar (78px) with Analog Mixer Fader & Morphing Play/Pause
+            Rectangle {
+                height: 78px;
+                clip: true;
+                border-radius: 16px;
+                background: LunariaTheme.surface-container-high;
+                border-width: 1px;
+                border-color: LunariaTheme.outline-variant;
+
+                HorizontalLayout {
+                    padding-left: 14px;
+                    padding-right: 14px;
+                    spacing: 12px;
+
+                    // Mini Cover + Title + Heart
+                    HorizontalLayout {
+                        width: 248px;
+                        spacing: 10px;
+
+                        Rectangle {
+                            width: 48px;
+                            height: 48px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 10px;
+                            background: LunariaTheme.surface-container;
+                            clip: true;
+
+                            if root.has-artwork: Image {
+                                width: parent.width;
+                                height: parent.height;
+                                source: root.mini-artwork;
+                                image-fit: contain;
+                            }
+                            if !root.has-artwork: Image {
+                                source: @image-url("../assets/icon.svg");
+                                width: 28px;
+                                height: 28px;
+                                x: (parent.width - self.width) / 2;
+                                y: (parent.height - self.height) / 2;
+                                image-fit: contain;
+                            }
+
+                            Rectangle {
+                                width: 100%;
+                                height: 100%;
+                                border-radius: parent.border-radius;
+                                border-width: 1px;
+                                border-color: LunariaTheme.outline-variant;
+                                background: transparent;
+                            }
+                        }
+
+                        Rectangle {
+                            horizontal-stretch: 1;
+                            preferred-width: 0px;
+                            min-width: 0px;
+                            clip: true;
+
+                            VerticalLayout {
+                                width: 100%;
+                                height: 100%;
+                                alignment: center;
+                                spacing: 2px;
+                                MarqueeText {
+                                    text: root.track-title;
+                                    font-size: 12px;
+                                    font-weight: 700;
+                                    text-color: LunariaTheme.on-surface;
+                                    active: root.has-track && MarqueeClock.active;
+                                    initial-delay-sec: 1.8;
+                                }
+                                MarqueeText {
+                                    text: root.track-artist + " • " + root.track-spec-badge;
+                                    font-size: 10px;
+                                    font-weight: 500;
+                                    text-color: LunariaTheme.on-surface-variant;
+                                    active: root.has-track && MarqueeClock.active;
+                                    initial-delay-sec: 2.4;
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 28px;
+                            height: 28px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 14px;
+                            background: fav-ta.has-hover && root.has-track
+                                ? LunariaTheme.surface-container-highest
+                                : LunariaTheme.surface-container;
+                            animate background { duration: 130ms; }
+                            opacity: root.has-track ? 1.0 : 0.45;
+                            accessible-role: button;
+                            accessible-label: root.current-is-favorite ? "Remove track from favorites" : "Add track to favorites";
+                            accessible-enabled: root.has-track;
+                            accessible-action-default => { if (root.has-track) { root.toggle-current-favorite(); } }
+                            Text {
+                                text: root.current-is-favorite ? "♥" : "♡";
+                                accessible-role: none;
+                                font-size: 13px;
+                                color: root.current-is-favorite ? LunariaTheme.primary : LunariaTheme.on-surface-variant;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            fav-ta := TouchArea {
+                                enabled: root.has-track;
+                                mouse-cursor: root.has-track ? pointer : default;
+                                clicked => { root.toggle-current-favorite(); }
+                            }
+                        }
+                    }
+
+                    // Prev / Morphing Play-Pause / Next + Analog Mixer Fader
+                    HorizontalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 8px;
+
+                        Rectangle {
+                            width: 34px;
+                            height: 36px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 12px;
+                            background: prev-ta.has-hover && root.has-track
+                                ? LunariaTheme.surface-container-highest
+                                : LunariaTheme.surface-container;
+                            animate background { duration: 130ms; }
+                            border-width: 1px;
+                            border-color: LunariaTheme.outline-variant;
+                            opacity: root.has-track ? 1.0 : 0.45;
+                            accessible-role: button;
+                            accessible-label: "Previous track";
+                            accessible-enabled: root.has-track;
+                            accessible-action-default => { if (root.has-track) { root.previous-track(); } }
+                            Text { text: "|<"; accessible-role: none; font-size: 11px; font-weight: 700; color: LunariaTheme.on-surface; horizontal-alignment: center; vertical-alignment: center; }
+                            prev-ta := TouchArea {
+                                enabled: root.has-track;
+                                mouse-cursor: root.has-track ? pointer : default;
+                                clicked => { root.previous-track(); }
+                            }
+                        }
+
+                        // Morphing M3 Expressive Play/Pause Shape (Circle ↔ Rounded Squircle)
+                        Rectangle {
+                            width: 54px;
+                            height: 38px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: root.is-playing ? 11px : 19px;
+                            animate border-radius { duration: 200ms; easing: cubic-bezier(0.22, 1, 0.36, 1); }
+                            background: LunariaTheme.primary-container;
+                            opacity: root.has-track ? 1.0 : 0.45;
+                            accessible-role: button;
+                            accessible-label: root.is-playing ? "Pause playback" : "Play playback";
+                            accessible-enabled: root.has-track;
+                            accessible-action-default => { if (root.has-track) { root.toggle-play-pause(); } }
+                            Text {
+                                text: root.is-playing ? "||" : "▶";
+                                accessible-role: none;
+                                font-size: 12px;
+                                font-weight: 700;
+                                color: LunariaTheme.on-primary-container;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            TouchArea {
+                                enabled: root.has-track;
+                                mouse-cursor: root.has-track ? pointer : default;
+                                clicked => { root.toggle-play-pause(); }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 34px;
+                            height: 36px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 12px;
+                            background: next-ta.has-hover && root.has-track
+                                ? LunariaTheme.surface-container-highest
+                                : LunariaTheme.surface-container;
+                            animate background { duration: 130ms; }
+                            border-width: 1px;
+                            border-color: LunariaTheme.outline-variant;
+                            opacity: root.has-track ? 1.0 : 0.45;
+                            accessible-role: button;
+                            accessible-label: "Next track";
+                            accessible-enabled: root.has-track;
+                            accessible-action-default => { if (root.has-track) { root.next-track(); } }
+                            Text { text: ">|"; accessible-role: none; font-size: 11px; font-weight: 700; color: LunariaTheme.on-surface; horizontal-alignment: center; vertical-alignment: center; }
+                            next-ta := TouchArea {
+                                enabled: root.has-track;
+                                mouse-cursor: root.has-track ? pointer : default;
+                                clicked => { root.next-track(); }
+                            }
+                        }
+
+                        Text {
+                            text: root.position-text;
+                            font-size: 11px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface;
+                            vertical-alignment: center;
+                            width: 44px;
+                            horizontal-alignment: right;
+                        }
+
+                        AnalogMixerFader {
+                            y: (parent.height - self.height) / 2;
+                            progress: root.playback-progress;
+                            has-track: root.has-track;
+                            is-playing: root.is-playing;
+                            seek(ratio) => { root.seek-ratio(ratio); }
+                            step-seek(ms) => { root.seek-relative-ms(ms); }
+                        }
+
+                        Text {
+                            text: root.duration-text;
+                            font-size: 11px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface-variant;
+                            vertical-alignment: center;
+                            width: 44px;
+                            horizontal-alignment: left;
+                        }
+                    }
+
+                    // Signal Pill + Mute & Master Volume
+                    HorizontalLayout {
+                        width: 244px;
+                        spacing: 8px;
+
+                        Rectangle {
+                            height: 26px;
+                            width: 92px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 8px;
+                            background: root.signal-is-bit-perfect ? LunariaTheme.primary-container : LunariaTheme.surface-container;
+                            border-width: 1px;
+                            border-color: sig-pill-ta.has-hover ? LunariaTheme.primary : LunariaTheme.outline-variant;
+                            accessible-role: button;
+                            accessible-label: "Open Audio Signal Path";
+                            accessible-action-default => { root.supporting-tab = 3; }
+                            Text {
+                                text: root.signal-is-bit-perfect ? "BIT-PERFECT" : "DSP FLOAT32";
+                                accessible-role: none;
+                                font-size: 9px;
+                                font-weight: 700;
+                                color: root.signal-is-bit-perfect ? LunariaTheme.on-primary-container : LunariaTheme.primary;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            sig-pill-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.supporting-tab = 3; }
+                            }
+                        }
+
+                        Rectangle {
+                            width: 30px;
+                            height: 26px;
+                            y: (parent.height - self.height) / 2;
+                            border-radius: 8px;
+                            background: root.is-muted
+                                ? LunariaTheme.secondary-container
+                                : (mute-ta.has-hover ? LunariaTheme.surface-container-highest : LunariaTheme.surface-container);
+                            animate background { duration: 130ms; }
+                            accessible-role: button;
+                            accessible-label: root.is-muted ? "Unmute audio" : "Mute audio";
+                            accessible-action-default => { root.toggle-mute(); }
+                            Text {
+                                text: root.is-muted ? "MUTE" : "VOL";
+                                accessible-role: none;
+                                font-size: 8px;
+                                font-weight: 700;
+                                color: root.is-muted ? LunariaTheme.on-secondary-container : LunariaTheme.on-surface-variant;
+                                horizontal-alignment: center;
+                                vertical-alignment: center;
+                            }
+                            mute-ta := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.toggle-mute(); }
+                            }
+                        }
+
+                        AnalogVolumeFader {
+                            y: (parent.height - self.height) / 2;
+                            value: root.volume-level;
+                            is-muted: root.is-muted;
+                            changed(v) => { root.set-volume(v); }
+                            step(d) => { root.step-volume(d); }
+                        }
+
+                        Text {
+                            text: root.volume-text;
+                            font-size: 10px;
+                            font-weight: 700;
+                            color: LunariaTheme.on-surface;
+                            vertical-alignment: center;
+                            width: 34px;
+                            horizontal-alignment: right;
+                        }
+                    }
+                }
+            }
+                }
+            }
+
+            // Modal Tag & Cover Art Editor Overlay
+            if root.tag-editor-open: TagEditorModal {
+                width: 100%;
+                height: 100%;
+                title-text <=> root.tag-edit-title;
+                artist-text <=> root.tag-edit-artist;
+                album-text <=> root.tag-edit-album;
+                album-artist-text <=> root.tag-edit-album-artist;
+                track-no-text <=> root.tag-edit-track-no;
+                disc-no-text <=> root.tag-edit-disc-no;
+                year-text <=> root.tag-edit-year;
+                genre-text <=> root.tag-edit-genre;
+                file-path: root.tag-edit-file-path;
+                cover-status: root.tag-edit-cover-status;
+                is-cue-track: root.tag-edit-is-cue;
+                saving-busy: root.tag-edit-busy;
+                error-text: root.tag-edit-error;
+
+                pick-cover => { root.tag-editor-pick-cover(); }
+                remove-cover => { root.tag-editor-remove-cover(); }
+                save => { root.tag-editor-save(); }
+                cancel => { root.tag-editor-cancel(); }
+            }
+        }
+    }
+}

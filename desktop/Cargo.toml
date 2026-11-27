@@ -1,0 +1,125 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/lunaria-model",
+    "crates/lunaria-dsp",
+    "crates/lunaria-audio",
+    "crates/lunaria-scanner",
+    "crates/lunaria-tags",
+    "crates/lunaria-db",
+    "crates/lunaria-win",
+    "apps/lunaria-desktop",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.99"
+license = "GPL-3.0-only"
+
+[workspace.dependencies]
+# Internal crates
+lunaria-model = { path = "crates/lunaria-model" }
+lunaria-dsp = { path = "crates/lunaria-dsp" }
+lunaria-audio = { path = "crates/lunaria-audio" }
+lunaria-scanner = { path = "crates/lunaria-scanner" }
+lunaria-tags = { path = "crates/lunaria-tags" }
+lunaria-db = { path = "crates/lunaria-db" }
+lunaria-win = { path = "crates/lunaria-win" }
+
+# Error handling & observability
+thiserror = "2.0.21"
+anyhow = "1.0.105"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+# Serialization, channels, atomics & theming
+arc-swap = "1.9.5"
+blake3 = "1.8.8"
+crossbeam-channel = "0.5.17"
+directories = "6.0.0"
+rayon = "1.12.0"
+rusqlite = { version = "0.43.0", features = ["bundled"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0.154"
+walkdir = "2.5.1"
+mcu-material-color = "0.2.3"
+
+# Testing & benchmarks
+proptest = "1.12.0"
+criterion = { version = "0.8.2", default-features = false, features = ["cargo_bench_support"] }
+tempfile = "3"
+
+# Audio, metadata, imaging, watcher & Windows WASAPI / File Dialogs
+image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "bmp"] }
+lofty = "0.25.5"
+notify = { version = "9.0.0", default-features = false }
+rtrb = "0.4.1"
+rubato = "5.1.0"
+rfd = { version = "0.18.0", default-features = false }
+raw-window-handle = "0.6.2"
+windows = "0.62.2"
+wasapi = "0.27.0"
+symphonia = { version = "0.6.1", default-features = false, features = [
+    "opt-simd",
+    "flac",
+    "wav",
+    "pcm",
+    "mp3",
+    "alac",
+    "aac",
+    "isomp4",
+    "ogg",
+    "vorbis",
+    "aiff",
+    "all-meta",
+] }
+
+# GUI (Slint 1.19 — FemtoVG + Software for smooth -gnu and low resource usage)
+slint = { version = "1.19.1", default-features = false, features = [
+    "std",
+    "compat-1-18",
+    "backend-default",
+    "renderer-femtovg",
+    "renderer-software",
+    "accessibility",
+    "raw-window-handle-06",
+] }
+slint-build = "1.19.1"
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+missing_debug_implementations = "warn"
+unused_results = "warn"
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+style = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+perf = { level = "warn", priority = -1 }
+unwrap_used = "deny"
+expect_used = "warn"
+panic = "deny"
+dbg_macro = "warn"
+print_stdout = "warn"
+todo = "warn"
+needless_pass_by_value = "warn"
+redundant_closure_for_method_calls = "warn"
+semicolon_if_nothing_returned = "warn"
+undocumented_unsafe_blocks = "warn"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "warn"
+
+[profile.dev.package."*"]
+opt-level = 3
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = true

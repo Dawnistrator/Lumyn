@@ -40,3 +40,8 @@ website/node_modules/
 website/.next/
 website/.vercel/
 website/out/
+
+# Desktop (Rust / Slint)
+desktop/target/
+desktop/data/
+desktop/dist/

@@ -26,7 +26,7 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Lumyn"
+rootProject.name = "Lunaria"
 
 include(":app")
 

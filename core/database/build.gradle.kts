@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.core.database"
+    namespace = "com.lunaria.core.database"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

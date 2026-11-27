@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="Theme.Lumyn" parent="android:Theme.Material.Light.NoActionBar">
-        <item name="android:windowBackground">@color/lumyn_window_background</item>
+    <style name="Theme.Lunaria" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@color/lunaria_window_background</item>
     </style>
 </resources>

@@ -76,18 +76,18 @@ jobs:
       - name: Build signed release APKs
         if: steps.check_existing.outputs.skip != 'true'
         env:
-          LUMYN_KEYSTORE_BASE64: ${{ secrets.LUMYN_KEYSTORE_BASE64 }}
-          LUMYN_KEYSTORE_PATH: ${{ runner.temp }}/lumyn-release.jks
-          LUMYN_KEYSTORE_PASSWORD: ${{ secrets.LUMYN_KEYSTORE_PASSWORD }}
-          LUMYN_KEY_ALIAS: ${{ secrets.LUMYN_KEY_ALIAS }}
-          LUMYN_KEY_PASSWORD: ${{ secrets.LUMYN_KEY_PASSWORD }}
+          LUNARIA_KEYSTORE_BASE64: ${{ secrets.LUNARIA_KEYSTORE_BASE64 }}
+          LUNARIA_KEYSTORE_PATH: ${{ runner.temp }}/lunaria-release.jks
+          LUNARIA_KEYSTORE_PASSWORD: ${{ secrets.LUNARIA_KEYSTORE_PASSWORD }}
+          LUNARIA_KEY_ALIAS: ${{ secrets.LUNARIA_KEY_ALIAS }}
+          LUNARIA_KEY_PASSWORD: ${{ secrets.LUNARIA_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          if [ -z "${LUMYN_KEYSTORE_BASE64}" ] || [ -z "${LUMYN_KEYSTORE_PASSWORD}" ] || [ -z "${LUMYN_KEY_ALIAS}" ] || [ -z "${LUMYN_KEY_PASSWORD}" ]; then
-            echo "::error::Missing signing secrets. Set LUMYN_KEYSTORE_BASE64, LUMYN_KEYSTORE_PASSWORD, LUMYN_KEY_ALIAS, and LUMYN_KEY_PASSWORD in GitHub Repository Secrets."
+          if [ -z "${LUNARIA_KEYSTORE_BASE64}" ] || [ -z "${LUNARIA_KEYSTORE_PASSWORD}" ] || [ -z "${LUNARIA_KEY_ALIAS}" ] || [ -z "${LUNARIA_KEY_PASSWORD}" ]; then
+            echo "::error::Missing signing secrets. Set LUNARIA_KEYSTORE_BASE64, LUNARIA_KEYSTORE_PASSWORD, LUNARIA_KEY_ALIAS, and LUNARIA_KEY_PASSWORD in GitHub Repository Secrets."
             exit 1
           fi
-          printf '%s' "${LUMYN_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LUMYN_KEYSTORE_PATH}"
+          printf '%s' "${LUNARIA_KEYSTORE_BASE64}" | tr -d '\r\n' | base64 --decode > "${LUNARIA_KEYSTORE_PATH}"
           ./gradlew :app:assembleRelease
 
       - name: Verify APK signatures & privacy, and stage release assets
@@ -125,7 +125,7 @@ jobs:
             if [ "${abi}" = "app-release.apk" ]; then
               abi="release"
             fi
-            cp "${apk}" "release-assets/Lumyn-${RELEASE_TAG}-${abi}.apk"
+            cp "${apk}" "release-assets/Lunaria-${RELEASE_TAG}-${abi}.apk"
           done
 
           (cd release-assets && sha256sum *.apk > SHA256SUMS.txt)
@@ -133,14 +133,14 @@ jobs:
 
       - name: Clean up decoded keystore
         if: always()
-        run: rm -f "${RUNNER_TEMP}/lumyn-release.jks"
+        run: rm -f "${RUNNER_TEMP}/lunaria-release.jks"
 
       - name: Publish GitHub Release
         if: steps.check_existing.outputs.skip != 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ inputs.tag || github.ref_name }}
-          name: Lumyn ${{ inputs.tag || github.ref_name }}
+          name: Lunaria ${{ inputs.tag || github.ref_name }}
           generate_release_notes: true
           prerelease: ${{ contains(inputs.tag || github.ref_name, '-') }}
           files: release-assets/*

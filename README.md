@@ -1,15 +1,16 @@
 <div align="center">
 
-# LUMYN
+# LUNARIA
 
 **A local Hi-Res music player for Android — built for people who own their music.**
 
-[![Release](https://img.shields.io/github/v/release/Dawnistrator/Lumyn?style=flat-square&label=Release&color=1B5E20)](https://github.com/Dawnistrator/Lumyn/releases/latest)
+[![Release](https://img.shields.io/github/v/release/Dawnistrator/Lunaria?style=flat-square&label=Release&color=1B5E20)](https://github.com/Dawnistrator/Lunaria/releases/latest)
 [![Android](https://img.shields.io/badge/Android-8.0%2B%20(API%2026%E2%80%9336)-3DDC84?style=flat-square&logo=android&logoColor=white)](https://developer.android.com)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.4.21-7F52FF?style=flat-square&logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Material 3 Expressive](https://img.shields.io/badge/Material%203-Expressive%201.5.0-6750A4?style=flat-square)](https://m3.material.io)
 [![Media3](https://img.shields.io/badge/Jetpack%20Media3-1.11.1-4285F4?style=flat-square)](https://developer.android.com/media/media3)
 [![Network](https://img.shields.io/badge/Internet%20Permission-None%20(100%25%20Local)-111111?style=flat-square)](#privacy-by-architecture)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square)](LICENSE)
 
 No accounts, no cloud sync, and zero network permissions. Just your FLAC, WAV, ALAC, and MP3 files, a transparent 32-bit float audio engine, and a tactile Material 3 Expressive interface that stays out of the way.
 
@@ -23,19 +24,19 @@ No accounts, no cloud sync, and zero network permissions. Just your FLAC, WAV, A
 <table>
   <tr>
     <td align="center" valign="top" width="25%">
-      <img src="docs/screenshots/home.png" width="190" alt="Lumyn Home and Floating Mini-Player" /><br />
+      <img src="docs/screenshots/home.png" width="190" alt="Lunaria Home and Floating Mini-Player" /><br />
       <sub><b>Home &amp; Mini-Player</b></sub>
     </td>
     <td align="center" valign="top" width="25%">
-      <img src="docs/screenshots/now-playing.png" width="190" alt="Lumyn Now Playing Screen" /><br />
+      <img src="docs/screenshots/now-playing.png" width="190" alt="Lunaria Now Playing Screen" /><br />
       <sub><b>Now Playing &amp; Seekbar</b></sub>
     </td>
     <td align="center" valign="top" width="25%">
-      <img src="docs/screenshots/library.png" width="190" alt="Lumyn Library Artists" /><br />
+      <img src="docs/screenshots/library.png" width="190" alt="Lunaria Library Artists" /><br />
       <sub><b>Library &amp; Artists</b></sub>
     </td>
     <td align="center" valign="top" width="25%">
-      <img src="docs/screenshots/equalizer.png" width="190" alt="Lumyn 10-Band Equalizer and DSP" /><br />
+      <img src="docs/screenshots/equalizer.png" width="190" alt="Lunaria 10-Band Equalizer and DSP" /><br />
       <sub><b>Equalizer &amp; 32-bit DSP</b></sub>
     </td>
   </tr>
@@ -46,23 +47,23 @@ No accounts, no cloud sync, and zero network permissions. Just your FLAC, WAV, A
 
 ## Download
 
-Grab signed release APKs directly from [**GitHub Releases**](https://github.com/Dawnistrator/Lumyn/releases/latest):
+Grab signed release APKs directly from [**GitHub Releases**](https://github.com/Dawnistrator/Lunaria/releases/latest):
 
 | File | Recommended For |
 | :--- | :--- |
-| `Lumyn-v*-arm64-v8a.apk` | Most modern Android phones (Android 8.0+ 64-bit ARM — smallest download) |
-| `Lumyn-v*-universal.apk` | Any Android device if you are unsure of your CPU architecture |
-| `Lumyn-v*-armeabi-v7a.apk` | Older 32-bit ARM devices |
-| `Lumyn-v*-x86_64.apk` / `Lumyn-v*-x86.apk` | Emulators and x86/x86_64 ChromeOS devices |
+| `Lunaria-v*-arm64-v8a.apk` | Most modern Android phones (Android 8.0+ 64-bit ARM — smallest download) |
+| `Lunaria-v*-universal.apk` | Any Android device if you are unsure of your CPU architecture |
+| `Lunaria-v*-armeabi-v7a.apk` | Older 32-bit ARM devices |
+| `Lunaria-v*-x86_64.apk` / `Lunaria-v*-x86.apk` | Emulators and x86/x86_64 ChromeOS devices |
 
 You can verify integrity against the attached `SHA256SUMS.txt` on every release.
 
 ---
 
-## What Makes Lumyn Different
+## What Makes Lunaria Different
 
 ### 1. Honest Hi-Res Audio Pipeline
-Instead of slapping "Hi-Res" badges on mystery audio routing, Lumyn exposes the exact chain from file to output inside an interactive **Audio Signal Path** sheet:
+Instead of slapping "Hi-Res" badges on mystery audio routing, Lunaria exposes the exact chain from file to output inside an interactive **Audio Signal Path** sheet:
 
 ```mermaid
 flowchart LR
@@ -89,7 +90,7 @@ flowchart LR
 - **Everyday Extras:** On-device Listening Stats, Glance home screen widget, and Android Auto (`MediaLibraryService`) browse tree + playback resumption.
 
 ### Privacy by Architecture
-Lumyn declares **zero `INTERNET` or `ACCESS_NETWORK_STATE` permissions** in both debug and release manifests. You can verify this directly on any compiled APK:
+Lunaria declares **zero `INTERNET` or `ACCESS_NETWORK_STATE` permissions** in both debug and release manifests. You can verify this directly on any compiled APK:
 
 ```bash
 aapt2 dump permissions app/build/outputs/apk/release/app-arm64-v8a-release.apk
@@ -101,12 +102,12 @@ aapt2 dump permissions app/build/outputs/apk/release/app-arm64-v8a-release.apk
 
 | Module | What it owns |
 |---|---|
-| `:app` | Adaptive shell (`LumynApp`), Navigation, Glance widget, Android Auto entry |
+| `:app` | Adaptive shell (`LunariaApp`), Navigation, Glance widget, Android Auto entry |
 | `:core:model` | Pure Kotlin domain models, ReplayGain math, AutoEQ/LRC/M3U/CUE parsers, Smart Playlist rules |
 | `:core:designsystem` | Bundled JetBrains Mono typography, `MaterialExpressiveTheme`, color extraction, shared components & icons |
 | `:core:database` | Room database (`v3` with `MIGRATION_2_3`), DAOs, DataStore preferences & persisted playback queue |
 | `:core:media-scanner` | MediaStore scanner/observer, binary header & ReplayGain parser, in-file tag writer, lyrics loader |
-| `:core:audio-engine` | `LumynPlaybackService`, `LumynAudioProcessorChain`, `LumynDspConfigStore`, `LumynDspAudioProcessor`, RBJ biquad DSP, 32-bit float `SonicAudioProcessor` playback speed, crossfade, USB DAC routing |
+| `:core:audio-engine` | `LunariaPlaybackService`, `LunariaAudioProcessorChain`, `LunariaDspConfigStore`, `LunariaDspAudioProcessor`, RBJ biquad DSP, 32-bit float `SonicAudioProcessor` playback speed, crossfade, USB DAC routing |
 | `:feature:home` | Home hero card, Smart Playlists strip, Album Spotlight carousel, local Listening Stats |
 | `:feature:library` | Songs, Albums, Artists, Folders, Playlists tabs + `LibraryDetailScreen` |
 | `:feature:player` | Now Playing screen & supporting pane, floating mini-player, Queue, Signal Path, Lyrics & Tag Editor sheets |
@@ -134,12 +135,12 @@ aapt2 dump permissions app/build/outputs/apk/release/app-arm64-v8a-release.apk
 ### Release Signing Setup
 Copy `keystore.properties.example` to `keystore.properties` (gitignored) and fill in your signing credentials:
 ```properties
-storeFile=keystore/lumyn-release.jks
+storeFile=keystore/lunaria-release.jks
 storePassword=YOUR_STORE_PASSWORD
-keyAlias=lumyn
+keyAlias=lunaria
 keyPassword=YOUR_KEY_PASSWORD
 ```
-For CI builds without a local `keystore.properties`, set `LUMYN_KEYSTORE_PATH`, `LUMYN_KEYSTORE_PASSWORD`, `LUMYN_KEY_ALIAS`, and `LUMYN_KEY_PASSWORD` as environment variables.
+For CI builds without a local `keystore.properties`, set `LUNARIA_KEYSTORE_PATH`, `LUNARIA_KEYSTORE_PASSWORD`, `LUNARIA_KEY_ALIAS`, and `LUNARIA_KEY_PASSWORD` as environment variables.
 
 ### Release APKs & Play Store Bundle
 ```bash
@@ -152,7 +153,25 @@ For CI builds without a local `keystore.properties`, set `LUMYN_KEYSTORE_PATH`, 
 
 ### Automated GitHub Releases
 [`.github/workflows/release.yml`](.github/workflows/release.yml) runs unit tests, builds & verifies signed release APKs (`apksigner verify` + `aapt2 dump permissions`), generates `SHA256SUMS.txt`, and publishes a GitHub Release automatically whenever you push a `v*` tag (or trigger **workflow_dispatch** from the Actions tab) with these four repository secrets configured:
-- `LUMYN_KEYSTORE_BASE64`
-- `LUMYN_KEYSTORE_PASSWORD`
-- `LUMYN_KEY_ALIAS`
-- `LUMYN_KEY_PASSWORD`
+- `LUNARIA_KEYSTORE_BASE64`
+- `LUNARIA_KEYSTORE_PASSWORD`
+- `LUNARIA_KEY_ALIAS`
+- `LUNARIA_KEY_PASSWORD`
+
+---
+
+## Lunaria for Windows (`desktop/`)
+
+Lunaria also ships a native **Windows 10/11 (`x86_64`)** desktop application under [`desktop/`](desktop/README.md) built in **100% Pure Rust (`edition = "2024"`, MSRV `1.99`)** + **Slint `1.19.1` (Material Design 3)** + **WASAPI Shared & Exclusive**:
+
+- **Same Core Philosophy, Native Desktop Footprint:** Zero-network (`NET_MATCHES=0` verified via `cargo tree`), 64-bit RBJ biquad DSP + live Bode plot, honest **Audio Signal Path**, `.cue` virtual tracks, `lofty` tag/cover editor with Windows File-Lock Handover, bundled offline **JetBrains Mono**, and optional **Zero-VRAM Software Renderer**.
+- **Native Windows Shell (`lunaria-win`) & Automatic Discord RPC:** SMTC media flyout & hardware media keys, System Tray (`Close to Tray`), Taskbar `ITaskbarList3` progress & thumbnail controls, Explorer `WM_DROPFILES` drag-and-drop, Single-Instance Named Pipe forwarding, and Discord Rich Presence (enabled by default with an On/Off toggle in Settings) over local Windows Named Pipes (`\\.\pipe\discord-ipc-0..9`).
+- **Portable ZIP & NSIS Installer:** Builds a self-contained stripped executable (`Portable ZIP` via `portable.flag`) alongside [`desktop/packaging/windows/lunaria-installer.nsi`](desktop/packaging/windows/lunaria-installer.nsi) and [`.github/workflows/release-windows.yml`](.github/workflows/release-windows.yml) (`win-v*` tags).
+
+See [`desktop/README.md`](desktop/README.md) and [`docs/WINDOWS_BLUEPRINT.md`](docs/WINDOWS_BLUEPRINT.md) for architecture details, keyboard shortcuts, and build commands.
+
+---
+
+## License
+
+Lunaria (Android, Windows Desktop, and supporting workspace crates) is licensed under the **GNU General Public License v3.0 (`GPL-3.0-only`)** — see [`LICENSE`](LICENSE) for full terms.

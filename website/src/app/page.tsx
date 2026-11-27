@@ -9,60 +9,71 @@ import { DownloadCenter } from "@/components/DownloadCenter";
 import { FaqSection } from "@/components/FaqSection";
 import { Footer } from "@/components/Footer";
 import { dictionaries } from "@/lib/i18n";
-import { fetchLatestRelease, GITHUB_REPO_URL } from "@/lib/releases";
+import { getLatestRelease, GITHUB_REPO_URL } from "@/lib/releases";
 
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  const { release, source } = await fetchLatestRelease();
+  const { release, windowsRelease, source } = await getLatestRelease();
 
-  const softwareSchema = {
+  const structuredGraph = {
     "@context": "https://schema.org",
-    "@type": "SoftwareApplication",
-    name: "Lumyn",
-    operatingSystem: "Android 8.0+",
-    applicationCategory: "MultimediaApplication",
-    softwareVersion: release.tagName.replace(/^v/i, ""),
-    downloadUrl: release.htmlUrl,
-    codeRepository: GITHUB_REPO_URL,
-    description:
-      "Offline Hi-Res Android music player for FLAC, WAV, ALAC, and MP3 files with 32-bit float DSP, bit-perfect USB DAC output, and zero network permissions.",
-  };
-
-  const faqSchema = {
-    "@context": "https://schema.org",
-    "@type": "FAQPage",
-    mainEntity: dictionaries.en.faq.items.map((item) => ({
-      "@type": "Question",
-      name: item.question,
-      acceptedAnswer: {
-        "@type": "Answer",
-        text: item.answer,
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        name: "Lunaria",
+        operatingSystem: ["Android 8.0+", "Windows 10/11 (x64)"],
+        applicationCategory: "MultimediaApplication",
+        softwareVersion: release.tagName.replace(/^v/i, ""),
+        downloadUrl: release.htmlUrl,
+        codeRepository: GITHUB_REPO_URL,
+        license: "https://www.gnu.org/licenses/gpl-3.0.html",
+        isAccessibleForFree: true,
+        offers: {
+          "@type": "Offer",
+          price: "0",
+          priceCurrency: "USD",
+        },
+        description:
+          "Offline Hi-Res music player for Android and Windows supporting FLAC, WAV, ALAC, and MP3 files with floating-point RBJ biquad DSP, bit-perfect output routing, and zero network permissions.",
       },
-    })),
+      {
+        "@type": "FAQPage",
+        mainEntity: dictionaries.en.faq.items.map((item) => ({
+          "@type": "Question",
+          name: item.question,
+          acceptedAnswer: {
+            "@type": "Answer",
+            text: item.answer,
+          },
+        })),
+      },
+    ],
   };
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <Navbar />
-      <main id="main-content" className="flex-1">
+      <Navbar latestTag={release.tagName} />
+      <main id="main-content" tabIndex={-1} className="flex-1">
         <Hero latestTag={release.tagName} />
         <SignalPathExplorer />
         <CapabilitiesShowcase />
         <TaglineReveal />
-        <PrivacyProof />
-        <DownloadCenter initialRelease={release} initialSource={source} />
+        <PrivacyProof latestTag={release.tagName} />
+        <DownloadCenter
+          initialRelease={release}
+          initialWindowsRelease={windowsRelease}
+          initialSource={source}
+        />
         <FaqSection />
       </main>
       <Footer latestTag={release.tagName} />
 
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(softwareSchema) }}
-      />
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(structuredGraph).replace(/</g, "\\u003c"),
+        }}
       />
     </div>
   );

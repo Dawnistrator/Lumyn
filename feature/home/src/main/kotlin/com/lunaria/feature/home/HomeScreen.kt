@@ -1,0 +1,667 @@
+package com.lunaria.feature.home
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.calculateEndPadding
+import androidx.compose.foundation.layout.calculateStartPadding
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearWavyProgressIndicator
+import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.carousel.HorizontalCenteredHeroCarousel
+import androidx.compose.material3.carousel.rememberCarouselState
+import androidx.compose.material3.toShape
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.lunaria.core.designsystem.component.LunariaArtwork
+import com.lunaria.core.designsystem.component.LunariaListDivider
+import com.lunaria.core.designsystem.component.LunariaListGroup
+import com.lunaria.core.designsystem.component.LunariaSectionHeader
+import com.lunaria.core.designsystem.component.LunariaStatusRow
+import com.lunaria.core.designsystem.component.TrackListItem
+import com.lunaria.core.designsystem.icon.LunariaIcons
+import com.lunaria.core.mediascanner.scanner.ScanStatus
+import com.lunaria.core.model.AlbumSummary
+import com.lunaria.core.model.AudioCapabilitiesSnapshot
+import com.lunaria.core.model.AudioPermissionStatus
+import com.lunaria.core.model.ListeningStats
+import com.lunaria.core.model.SmartPlaylistSummary
+import com.lunaria.core.model.SmartPlaylistType
+import com.lunaria.core.model.Track
+
+@Composable
+fun HomeEntry(
+    audioPermission: AudioPermissionStatus,
+    currentTrackId: Long?,
+    onPermissionAction: () -> Unit,
+    onPlayTracks: (List<Track>, Int) -> Unit,
+    onPlayNext: (Track) -> Unit,
+    onAddToQueue: (Track) -> Unit,
+    onAddToPlaylist: (Track) -> Unit = {},
+    onEditTrackTags: (Track) -> Unit = {},
+    onOpenAlbum: (Long) -> Unit = {},
+    onOpenSmartPlaylist: (SmartPlaylistType) -> Unit = {},
+    onOpenStats: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    viewModel: HomeViewModel = hiltViewModel(),
+) {
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    HomeScreen(
+        audioPermission = audioPermission,
+        uiState = state,
+        currentTrackId = currentTrackId,
+        onPermissionAction = onPermissionAction,
+        onScanClick = viewModel::triggerScan,
+        onPlayTracks = onPlayTracks,
+        onShuffleAllClick = {
+            viewModel.loadShuffledLibrary { tracks -> onPlayTracks(tracks, 0) }
+        },
+        onPlayNext = onPlayNext,
+        onAddToQueue = onAddToQueue,
+        onAddToPlaylist = onAddToPlaylist,
+        onToggleFavorite = viewModel::toggleFavorite,
+        onEditTrackTags = onEditTrackTags,
+        onOpenAlbum = onOpenAlbum,
+        onOpenSmartPlaylist = onOpenSmartPlaylist,
+        onOpenStats = onOpenStats,
+        modifier = modifier,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun HomeScreen(
+    audioPermission: AudioPermissionStatus,
+    uiState: HomeUiState,
+    currentTrackId: Long?,
+    onPermissionAction: () -> Unit,
+    onScanClick: () -> Unit,
+    onPlayTracks: (List<Track>, Int) -> Unit,
+    onPlayNext: (Track) -> Unit = {},
+    onAddToQueue: (Track) -> Unit = {},
+    onAddToPlaylist: (Track) -> Unit = {},
+    onToggleFavorite: (Track) -> Unit,
+    onEditTrackTags: (Track) -> Unit = {},
+    onOpenAlbum: (Long) -> Unit = {},
+    onOpenSmartPlaylist: (SmartPlaylistType) -> Unit = {},
+    onOpenStats: () -> Unit = {},
+    onShuffleAllClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+) {
+    val listState = rememberLazyListState()
+    val layoutDirection = LocalLayoutDirection.current
+
+    Scaffold(
+        modifier = modifier,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Lunaria",
+                        style = MaterialTheme.typography.titleLargeEmphasized,
+                    )
+                },
+                actions = {
+                    if (audioPermission == AudioPermissionStatus.Granted) {
+                        IconButton(
+                            onClick = onScanClick,
+                            shapes = IconButtonDefaults.shapes(),
+                        ) {
+                            Icon(
+                                painter = painterResource(LunariaIcons.Refresh),
+                                contentDescription = "Rescan library",
+                            )
+                        }
+                    }
+                },
+            )
+        },
+    ) { innerPadding ->
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxSize()
+                .consumeWindowInsets(innerPadding),
+            contentPadding = PaddingValues(
+                start = innerPadding.calculateStartPadding(layoutDirection),
+                end = innerPadding.calculateEndPadding(layoutDirection),
+                top = innerPadding.calculateTopPadding() + 8.dp,
+                bottom = innerPadding.calculateBottomPadding() + 16.dp,
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            if (uiState.scanStatus is ScanStatus.Scanning) {
+                item(key = "scan-progress", contentType = "scan-progress") {
+                    ScanProgressBanner(
+                        status = uiState.scanStatus,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+
+            if (audioPermission != AudioPermissionStatus.Granted) {
+                item(key = "permission", contentType = "permission") {
+                    PermissionBanner(
+                        status = audioPermission,
+                        onAction = onPermissionAction,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+
+            item(key = "summary", contentType = "summary") {
+                LibraryHeroCard(
+                    totalTracks = uiState.totalTrackCount,
+                    hiResTracks = uiState.hiResTrackCount,
+                    hasRecentTracks = uiState.recentTracks.isNotEmpty(),
+                    onShuffleAll = onShuffleAllClick,
+                    onPlayRecent = {
+                        if (uiState.recentTracks.isNotEmpty()) {
+                            onPlayTracks(uiState.recentTracks, 0)
+                        }
+                    },
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
+            }
+
+            if (uiState.totalTrackCount > 0 && uiState.smartPlaylists.isNotEmpty()) {
+                item(key = "smart-header", contentType = "section-header") {
+                    LunariaSectionHeader("Smart playlists")
+                }
+                item(key = "smart-row", contentType = "smart-row") {
+                    SmartPlaylistsRow(
+                        smartPlaylists = uiState.smartPlaylists,
+                        onOpenSmartPlaylist = onOpenSmartPlaylist,
+                    )
+                }
+            }
+
+            if (uiState.totalTrackCount > 0) {
+                item(key = "insights-card", contentType = "insights") {
+                    ListeningInsightsCard(
+                        stats = uiState.listeningStats,
+                        onOpenStats = onOpenStats,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+
+            if (uiState.spotlightAlbums.isNotEmpty()) {
+                item(key = "spotlight-header", contentType = "section-header") {
+                    LunariaSectionHeader("Album spotlight")
+                }
+                item(key = "spotlight-carousel", contentType = "carousel") {
+                    AlbumSpotlightCarousel(
+                        albums = uiState.spotlightAlbums,
+                        onOpenAlbum = onOpenAlbum,
+                    )
+                }
+            }
+
+            if (uiState.recentTracks.isNotEmpty()) {
+                item(key = "recent-header", contentType = "section-header") {
+                    LunariaSectionHeader("Recently added")
+                }
+                itemsIndexed(
+                    items = uiState.recentTracks,
+                    key = { _, track -> track.id },
+                    contentType = { _, _ -> "track" },
+                ) { index, track ->
+                    TrackListItem(
+                        track = track,
+                        isPlaying = track.id == currentTrackId,
+                        onClick = { onPlayTracks(uiState.recentTracks, index) },
+                        onToggleFavorite = { onToggleFavorite(track) },
+                        onPlayNext = { onPlayNext(track) },
+                        onAddToQueue = { onAddToQueue(track) },
+                        onAddToPlaylist = { onAddToPlaylist(track) },
+                        onEditTags = { onEditTrackTags(track) },
+                    )
+                }
+            } else if (audioPermission == AudioPermissionStatus.Granted &&
+                uiState.scanStatus !is ScanStatus.Scanning
+            ) {
+                item(key = "empty-library", contentType = "empty") {
+                    EmptyLibraryCard(
+                        onScanClick = onScanClick,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
+
+            item(key = "capabilities", contentType = "capabilities") {
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    LunariaSectionHeader("Hi-Res audio engine")
+                    CapabilityGroup(uiState.capabilities)
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun SmartPlaylistsRow(
+    smartPlaylists: List<SmartPlaylistSummary>,
+    onOpenSmartPlaylist: (SmartPlaylistType) -> Unit,
+) {
+    LazyRow(
+        contentPadding = PaddingValues(horizontal = 16.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        items(items = smartPlaylists, key = { it.type.name }, contentType = { "smart-playlist" }) { item ->
+            val iconRes = when (item.type) {
+                SmartPlaylistType.RECENTLY_PLAYED -> LunariaIcons.History
+                SmartPlaylistType.MOST_PLAYED -> LunariaIcons.BarChart
+                SmartPlaylistType.FORGOTTEN_GEMS -> LunariaIcons.Star
+                SmartPlaylistType.HI_RES_COLLECTION -> LunariaIcons.GraphicEq
+                SmartPlaylistType.FAVORITES -> LunariaIcons.FavoriteFilled
+            }
+            Surface(
+                onClick = { onOpenSmartPlaylist(item.type) },
+                color = MaterialTheme.colorScheme.surfaceContainer,
+                shape = MaterialTheme.shapes.largeIncreased,
+                modifier = Modifier.width(160.dp),
+            ) {
+                Column(
+                    modifier = Modifier.padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Surface(
+                        shape = MaterialShapes.Cookie7Sided.toShape(),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.size(38.dp),
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                painter = painterResource(iconRes),
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp),
+                            )
+                        }
+                    }
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleSmallEmphasized,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${item.trackCount} ${if (item.trackCount == 1) "track" else "tracks"}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ListeningInsightsCard(
+    stats: ListeningStats,
+    onOpenStats: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        onClick = onOpenStats,
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.largeIncreased,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(
+                painter = painterResource(LunariaIcons.BarChart),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(28.dp),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text("Listening insights", style = MaterialTheme.typography.titleSmallEmphasized)
+                val summary = if (stats.totalPlays == 0) {
+                    "Play music to build your listening stats"
+                } else {
+                    val hiResPct = (stats.hiResPlays * 100) / stats.totalPlays
+                    val playsLabel = if (stats.totalPlays == 1) "1 play" else "${stats.totalPlays} plays"
+                    "$playsLabel • ${formatListeningHoursMinutes(stats.totalListeningMs)} • $hiResPct% Hi-Res"
+                }
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            TextButton(onClick = onOpenStats) { Text("View") }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ScanProgressBanner(status: ScanStatus.Scanning, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.largeIncreased,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            val label = if (status.totalCount > 0) {
+                "Scanning local music: ${status.indexedCount} / ${status.totalCount} files"
+            } else {
+                "Inspecting audio storage…"
+            }
+            Text(text = label, style = MaterialTheme.typography.bodyMedium)
+            if (status.totalCount > 0) {
+                LinearWavyProgressIndicator(
+                    progress = { (status.indexedCount.toFloat() / status.totalCount).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearWavyProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun PermissionBanner(
+    status: AudioPermissionStatus,
+    onAction: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val permanent = status == AudioPermissionStatus.PermanentlyDenied
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        shape = MaterialTheme.shapes.largeIncreased,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Allow audio file access", style = MaterialTheme.typography.titleMediumEmphasized)
+            Text(
+                text = if (permanent) {
+                    "Permission denied. Open app settings to allow Lunaria to read local music on this device."
+                } else {
+                    "Lunaria only reads music stored on your device. No data is ever sent anywhere."
+                },
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Button(
+                onClick = onAction,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text(if (permanent) "Open settings" else "Allow audio access")
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun LibraryHeroCard(
+    totalTracks: Int,
+    hiResTracks: Int,
+    hasRecentTracks: Boolean,
+    onShuffleAll: () -> Unit,
+    onPlayRecent: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = MaterialTheme.shapes.extraLargeIncreased,
+    ) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "Hi-Res music player",
+                        style = MaterialTheme.typography.headlineSmallEmphasized,
+                    )
+                    Text(
+                        text = "Lossless FLAC, WAV, and local audio ready to play.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Surface(
+                    shape = MaterialShapes.SoftBurst.toShape(),
+                    color = MaterialTheme.colorScheme.primaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.size(48.dp),
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            painter = painterResource(LunariaIcons.GraphicEq),
+                            contentDescription = null,
+                            modifier = Modifier.size(24.dp),
+                        )
+                    }
+                }
+            }
+            if (totalTracks > 0) {
+                Surface(
+                    shape = MaterialTheme.shapes.small,
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ) {
+                    val songsLabel = if (totalTracks == 1) "1 song" else "$totalTracks songs"
+                    Text(
+                        text = "$songsLabel • $hiResTracks Hi-Res",
+                        style = MaterialTheme.typography.labelMediumEmphasized,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Button(
+                        onClick = onShuffleAll,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Icon(
+                            painter = painterResource(LunariaIcons.Shuffle),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text("Shuffle all", modifier = Modifier.padding(start = 6.dp))
+                    }
+                    FilledTonalButton(
+                        onClick = onPlayRecent,
+                        enabled = hasRecentTracks,
+                        shapes = ButtonDefaults.shapes(),
+                    ) {
+                        Icon(
+                            painter = painterResource(LunariaIcons.PlayArrow),
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Text("Play recent", modifier = Modifier.padding(start = 6.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AlbumSpotlightCarousel(
+    albums: List<AlbumSummary>,
+    onOpenAlbum: (Long) -> Unit,
+) {
+    key(albums.size) {
+        val state = rememberCarouselState { albums.size }
+        HorizontalCenteredHeroCarousel(
+            state = state,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(210.dp),
+            itemSpacing = 8.dp,
+            contentPadding = PaddingValues(horizontal = 16.dp),
+        ) { index ->
+            val album = albums[index]
+            val scrimBottom = MaterialTheme.colorScheme.scrim.copy(alpha = 0.72f)
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .maskClip(MaterialTheme.shapes.extraLarge)
+                    .clickable { onOpenAlbum(album.id) },
+            ) {
+                LunariaArtwork(
+                    artworkUri = album.artworkUri,
+                    contentDescription = album.title,
+                    cornerRadius = 0.dp,
+                    fallbackIcon = LunariaIcons.Album,
+                    fallbackIconSize = 48.dp,
+                    modifier = Modifier.fillMaxSize(),
+                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .align(Alignment.BottomStart)
+                        .background(
+                            Brush.verticalGradient(listOf(Color.Transparent, scrimBottom)),
+                        )
+                        .padding(16.dp),
+                ) {
+                    Column {
+                        Text(
+                            text = album.title,
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        val countLabel = if (album.trackCount == 1) "1 song" else "${album.trackCount} songs"
+                        Text(
+                            text = "${album.artist} • $countLabel",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color.White.copy(alpha = 0.85f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun EmptyLibraryCard(onScanClick: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceContainer,
+        shape = MaterialTheme.shapes.largeIncreased,
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("No tracks indexed yet", style = MaterialTheme.typography.titleMediumEmphasized)
+            Text(
+                text = "Scan local storage or check folder filters in Settings.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            OutlinedButton(
+                onClick = onScanClick,
+                shapes = ButtonDefaults.shapes(),
+            ) {
+                Text("Scan local music")
+            }
+        }
+    }
+}
+
+@Composable
+private fun CapabilityGroup(capabilities: AudioCapabilitiesSnapshot) {
+    LunariaListGroup {
+        LunariaStatusRow(
+            title = "FFmpeg / FLAC extension decoder",
+            supporting = "FLAC support on API 26 plus ALAC, APE, WavPack & WMA",
+            statusText = if (capabilities.hasFfmpegExtension) "Active" else "Platform",
+        )
+        LunariaListDivider()
+        LunariaStatusRow(
+            title = "32-bit float output",
+            supporting = "Preserves headroom while EQ and ReplayGain are active",
+            statusText = if (capabilities.supportsFloatOutput) "Active" else "Unavailable",
+        )
+        LunariaListDivider()
+        LunariaStatusRow(
+            title = "Direct playback",
+            supporting = "Bypasses the system mixer (Android 13+)",
+            statusText = if (capabilities.supportsDirectPlayback) "Supported" else "Unsupported",
+        )
+        LunariaListDivider()
+        LunariaStatusRow(
+            title = "Bit-perfect USB DAC",
+            supporting = "Native sample rate & bit depth to DAC (Android 14+)",
+            statusText = if (capabilities.supportsBitPerfectUsb) "Supported" else "Unsupported",
+        )
+        LunariaListDivider()
+        LunariaStatusRow(
+            title = "Current output",
+            supporting = capabilities.activeOutputSummary,
+            statusText = "API ${capabilities.apiLevel}",
+        )
+    }
+}

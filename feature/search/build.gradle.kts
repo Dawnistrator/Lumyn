@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.lumyn.feature.search"
+    namespace = "com.lunaria.feature.search"
     compileSdk = 37
     buildToolsVersion = "37.0.0"
 

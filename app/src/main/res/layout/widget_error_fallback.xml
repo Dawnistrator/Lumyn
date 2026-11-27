@@ -10,7 +10,7 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:gravity="center"
-        android:text="Lumyn — Tap to open"
+        android:text="Lunaria — Tap to open"
         android:textAppearance="@android:style/TextAppearance.Material.Body1" />
 
 </LinearLayout>

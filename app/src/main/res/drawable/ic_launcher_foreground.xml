@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Five audio-level bars on a curve: the Lumyn mark. Kept inside the 66dp adaptive-icon safe zone. -->
+<!-- Lunaria Monogram (Concept B): L frame + lunar crescent + pulse dot inside the 66dp adaptive-icon safe zone. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:fillColor="@color/lumyn_icon_foreground"
-        android:pathData="M30,48h6v12h-6zM40,40h6v28h-6zM51,32h6v44h-6zM62,40h6v28h-6zM72,48h6v12h-6z" />
+        android:fillColor="@color/lunaria_icon_foreground"
+        android:pathData="M 35.14 32 H 39.33 A 3.14 3.14 0 0 1 42.48 35.14 V 61.33 A 4.19 4.19 0 0 0 46.67 65.52 H 72.86 A 3.14 3.14 0 0 1 76 68.67 V 72.86 A 3.14 3.14 0 0 1 72.86 76 H 35.14 A 3.14 3.14 0 0 1 32 72.86 V 35.14 A 3.14 3.14 0 0 1 35.14 32 Z M 74.06 48.64 A 12.57 12.57 0 1 1 63.33 33.13 A 9.43 9.43 0 1 0 74.06 48.64 Z M 65.52 44.05 A 2.88 2.88 0 1 1 71.29 44.05 A 2.88 2.88 0 1 1 65.52 44.05 Z" />
 </vector>

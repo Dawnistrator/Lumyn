@@ -1,0 +1,24 @@
+[package]
+name = "lunaria-tags"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[dependencies]
+blake3 = { workspace = true }
+image = { workspace = true }
+lofty = { workspace = true }
+lunaria-audio = { workspace = true }
+lunaria-db = { workspace = true }
+lunaria-model = { workspace = true }
+lunaria-scanner = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+
+[dev-dependencies]
+lunaria-dsp = { workspace = true }
+tempfile = { workspace = true }
+
+[lints]
+workspace = true

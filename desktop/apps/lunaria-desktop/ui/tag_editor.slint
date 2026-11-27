@@ -1,0 +1,223 @@
+// Modal Metadata & Cover Art Editor backed by lunaria-tags (Windows File-Lock Handover).
+
+import { LunariaTheme } from "./theme.slint";
+import { LunariaTextField, TonalActionButton } from "./widgets.slint";
+
+export component TagEditorModal inherits Rectangle {
+    in-out property <string> title-text;
+    in-out property <string> artist-text;
+    in-out property <string> album-text;
+    in-out property <string> album-artist-text;
+    in-out property <string> track-no-text;
+    in-out property <string> disc-no-text;
+    in-out property <string> year-text;
+    in-out property <string> genre-text;
+    in property <string> file-path: "";
+    in property <string> cover-status: "Keep existing cover";
+    in property <bool> is-cue-track: false;
+    in property <bool> saving-busy: false;
+    in property <string> error-text: "";
+
+    callback pick-cover();
+    callback remove-cover();
+    callback save();
+    callback cancel();
+
+    background: #00000099;
+
+    // Swallow background pointer clicks
+    TouchArea { }
+
+    Rectangle {
+        width: 560px;
+        height: 515px;
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        border-radius: 18px;
+        background: LunariaTheme.surface-container;
+        border-width: 1px;
+        border-color: LunariaTheme.outline;
+        clip: true;
+
+        VerticalLayout {
+            padding: 18px;
+            spacing: 10px;
+
+            HorizontalLayout {
+                spacing: 10px;
+                VerticalLayout {
+                    horizontal-stretch: 1;
+                    spacing: 2px;
+                    Text {
+                        text: "Edit Audio Tags & Cover Art";
+                        font-size: 15px;
+                        font-weight: 700;
+                        color: LunariaTheme.on-surface;
+                    }
+                    Text {
+                        text: root.file-path;
+                        font-size: 9px;
+                        color: LunariaTheme.on-surface-variant;
+                        overflow: elide;
+                    }
+                }
+                TonalActionButton {
+                    label: "Close";
+                    width: 66px;
+                    clicked => { root.cancel(); }
+                }
+            }
+
+            if root.is-cue-track: Rectangle {
+                height: 30px;
+                border-radius: 8px;
+                background: LunariaTheme.surface-container-highest;
+                Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    height: parent.height;
+                    text: "Virtual .cue sheet tracks are read-only for in-file tag writing.";
+                    font-size: 10px;
+                    color: LunariaTheme.primary;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            if root.error-text != "": Rectangle {
+                height: 28px;
+                border-radius: 8px;
+                background: LunariaTheme.error-container;
+                Text {
+                    x: 10px;
+                    width: parent.width - 20px;
+                    height: parent.height;
+                    text: root.error-text;
+                    font-size: 10px;
+                    font-weight: 600;
+                    color: LunariaTheme.on-error-container;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+            }
+
+            VerticalLayout {
+                spacing: 7px;
+
+                Text { text: "Title"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                LunariaTextField { text <=> root.title-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "Track title"; }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Artist"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.artist-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "Artist"; }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Album Artist"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.album-artist-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "Album artist"; }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Album"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.album-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "Album"; }
+                    }
+                    VerticalLayout {
+                        width: 170px;
+                        spacing: 3px;
+                        Text { text: "Genre"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.genre-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "Genre"; }
+                    }
+                }
+
+                HorizontalLayout {
+                    spacing: 10px;
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Track #"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.track-no-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "1"; }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Disc #"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.disc-no-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "1"; }
+                    }
+                    VerticalLayout {
+                        horizontal-stretch: 1;
+                        spacing: 3px;
+                        Text { text: "Year"; font-size: 10px; font-weight: 700; color: LunariaTheme.on-surface-variant; }
+                        LunariaTextField { text <=> root.year-text; enabled: !root.saving-busy && !root.is-cue-track; placeholder: "2024"; }
+                    }
+                }
+            }
+
+            // Cover Art Row
+            Rectangle {
+                height: 46px;
+                border-radius: 10px;
+                background: LunariaTheme.surface-container-low;
+                border-width: 1px;
+                border-color: LunariaTheme.outline-variant;
+
+                HorizontalLayout {
+                    padding-left: 10px;
+                    padding-right: 8px;
+                    spacing: 8px;
+                    Text {
+                        text: "Cover: " + root.cover-status;
+                        font-size: 10px;
+                        color: LunariaTheme.on-surface-variant;
+                        horizontal-stretch: 1;
+                        vertical-alignment: center;
+                        overflow: elide;
+                    }
+                    TonalActionButton {
+                        label: "Pick Image...";
+                        width: 100px;
+                        y: (parent.height - self.height) / 2;
+                        enabled: !root.saving-busy && !root.is-cue-track;
+                        clicked => { root.pick-cover(); }
+                    }
+                    TonalActionButton {
+                        label: "Remove";
+                        width: 74px;
+                        y: (parent.height - self.height) / 2;
+                        enabled: !root.saving-busy && !root.is-cue-track;
+                        clicked => { root.remove-cover(); }
+                    }
+                }
+            }
+
+            Rectangle { vertical-stretch: 1; }
+
+            HorizontalLayout {
+                spacing: 8px;
+                alignment: end;
+                TonalActionButton {
+                    label: "Cancel";
+                    width: 84px;
+                    clicked => { root.cancel(); }
+                }
+                TonalActionButton {
+                    label: "Save Tags";
+                    filled: true;
+                    busy: root.saving-busy;
+                    enabled: !root.is-cue-track && !root.saving-busy;
+                    width: 118px;
+                    clicked => { root.save(); }
+                }
+            }
+        }
+    }
+}

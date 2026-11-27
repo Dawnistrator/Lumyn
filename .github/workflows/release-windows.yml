@@ -1,0 +1,121 @@
+name: Release Windows
+
+on:
+  push:
+    tags:
+      - "win-*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Windows release tag (e.g. win-0.1.0 or win-v1.0.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-windows-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-and-release-windows:
+    name: Build & Publish Lunaria Windows (Installer + Portable ZIP)
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: desktop
+        shell: pwsh
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up MSVC & Windows SDK Environment
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+
+      - name: Install Rust 1.99 MSVC toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.99"
+          targets: x86_64-pc-windows-msvc
+          components: clippy, rustfmt
+
+      - name: Cache Cargo registry and target
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~\.cargo\registry
+            ~\.cargo\git
+            desktop\target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('desktop\Cargo.lock', 'desktop\Cargo.toml') }}
+
+      - name: Zero-Network Privacy Audit
+        run: |
+          $net = cargo tree --workspace --edges normal | Select-String -Pattern "reqwest|hyper|tokio|curl|ureq|surf|isahc|rustls|native-tls|openssl|h2|quinn|tungstenite"
+          if ($net.Count -gt 0) {
+            Write-Error "Network crate(s) detected in Lunaria Windows dependency tree:`n$($net -join "`n")"
+            exit 1
+          }
+          Write-Host "Zero-network audit passed (0 matches)."
+
+      - name: Formatting & Strict Clippy Gate
+        env:
+          CARGO_BUILD_WARNINGS: deny
+        run: |
+          cargo fmt --all --check
+          cargo clippy --workspace --all-targets
+
+      - name: Workspace Unit, Parity & Proptest Suite
+        run: |
+          cargo test --workspace
+
+      - name: DSP Benchmark Validation
+        run: |
+          cargo bench -p lunaria-dsp -- --test
+
+      - name: Build Release Binary (x86_64-pc-windows-msvc)
+        run: |
+          cargo build --release -p lunaria-desktop
+
+      - name: Stage Portable ZIP, NSIS Installer & SHA256SUMS
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $rawTag = if ($env:INPUT_TAG) { $env:INPUT_TAG } else { $env:GITHUB_REF_NAME }
+          $verNum = $rawTag -replace '^win-v?|^v', ''
+          if (-not $verNum) { $verNum = "0.1.0" }
+
+          New-Item -ItemType Directory -Force -Path "release-assets" | Out-Null
+          New-Item -ItemType Directory -Force -Path "portable-stage" | Out-Null
+
+          Copy-Item "target\release\lunaria-desktop.exe" "portable-stage\lunaria.exe" -Force
+          Copy-Item "..\LICENSE" "portable-stage\LICENSE" -Force
+          Set-Content -Path "portable-stage\portable.flag" -Value "portable" -NoNewline
+
+          $zipOut = "release-assets\Lunaria-v$verNum-windows-x64-portable.zip"
+          Compress-Archive -Path "portable-stage\*" -DestinationPath $zipOut -Force
+
+          $setupOut = (Resolve-Path "release-assets").Path + "\Lunaria-v$verNum-windows-x64-setup.exe"
+          $exeAbs = (Resolve-Path "target\release\lunaria-desktop.exe").Path
+          makensis "/DVERSION=$verNum" "/DOUT_FILE=$setupOut" "/DEXE_SOURCE=$exeAbs" "packaging\windows\lunaria-installer.nsi"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          $hashes = Get-ChildItem "release-assets\*" -File | ForEach-Object {
+            $h = (Get-FileHash -Algorithm SHA256 -Path $_.FullName).Hash.ToLowerInvariant()
+            "$h  $($_.Name)"
+          }
+          Set-Content -Path "release-assets\SHA256SUMS.txt" -Value ($hashes -join "`n")
+          Get-ChildItem "release-assets"
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.tag || github.ref_name }}
+          name: Lunaria Windows ${{ inputs.tag || github.ref_name }}
+          generate_release_notes: true
+          prerelease: ${{ contains(inputs.tag || github.ref_name, '-alpha') || contains(inputs.tag || github.ref_name, '-beta') || contains(inputs.tag || github.ref_name, '-rc') }}
+          files: desktop/release-assets/*
