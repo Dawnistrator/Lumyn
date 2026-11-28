@@ -102,22 +102,26 @@ jobs:
           $setupOut = (Resolve-Path "release-assets").Path + "\Lunaria-v$verNum-windows-x64-setup.exe"
           $exeAbs = (Resolve-Path "target\release\lunaria-desktop.exe").Path
 
+          $makensisPath = $null
           $makensisCmd = Get-Command makensis -ErrorAction SilentlyContinue
-          $makensisPath = if ($makensisCmd) {
-            $makensisCmd.Source
+          if ($makensisCmd) {
+            $makensisPath = $makensisCmd.Source
           } elseif (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe") {
-            "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+            $makensisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
           } elseif (Test-Path "$env:ProgramFiles\NSIS\makensis.exe") {
-            "$env:ProgramFiles\NSIS\makensis.exe"
+            $makensisPath = "$env:ProgramFiles\NSIS\makensis.exe"
           } else {
             choco install nsis -y --no-progress
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             if (Test-Path "${env:ProgramFiles(x86)}\NSIS\makensis.exe") {
-              "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+              $makensisPath = "${env:ProgramFiles(x86)}\NSIS\makensis.exe"
+            } elseif (Test-Path "$env:ProgramFiles\NSIS\makensis.exe") {
+              $makensisPath = "$env:ProgramFiles\NSIS\makensis.exe"
             } else {
-              (Get-Command makensis -ErrorAction Stop).Source
+              $makensisPath = (Get-Command makensis -ErrorAction Stop).Source
             }
           }
+          Write-Host "Using makensis: $makensisPath"
           & $makensisPath "/DVERSION=$verNum" "/DOUT_FILE=$setupOut" "/DEXE_SOURCE=$exeAbs" "packaging\windows\lunaria-installer.nsi"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
